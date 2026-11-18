@@ -1,0 +1,50 @@
+hero3NativeAPP — licence status
+===============================
+
+NO LICENCE IS GRANTED.
+
+The code written for this project is
+Copyright (c) 2026 the repository owner, all rights reserved. No permission to use,
+copy, modify or distribute it is given to anyone.
+
+That is the DEFAULT position under copyright law, not a decision — it is written down
+here only so the absence of a licence file cannot be mistaken for permission. The
+owner may replace this file with a real licence at any time. Until they do, all rights
+in that code are reserved.
+
+
+What this file does NOT cover
+-----------------------------
+1. `vendor/` — forks of other people's crates, each governed by its own upstream
+   licence file. They are NOT relicensed by anything above.
+
+     vendor/wie          MIT                https://github.com/dlunch/wie
+     vendor/arm32_cpu    MIT                https://github.com/dlunch/arm32_cpu
+     vendor/rustjava     MIT                https://github.com/dlunch/RustJava
+     vendor/smaf         MIT                https://github.com/dlunch/smaf
+     vendor/smaf_player  MIT                https://github.com/dlunch/smaf
+     vendor/softbuffer   MIT OR Apache-2.0  https://github.com/rust-windowing/softbuffer
+     vendor/oxisynth     LGPL-2.1           https://github.com/PolyMeilex/OxiSynth
+
+   oxisynth is linked statically into `libmain.so`. Anyone who hands an APK built from
+   this tree to someone else takes on the LGPL-2.1 obligations for that library.
+
+2. 영웅서기3 — 대지의 성흔 — the game, and everything taken from it. Copyright in the
+   game belongs to its rights holders; nothing here covers it and no claim is made to it.
+   That includes the packaged game archive (`android_app/app/src/main/assets/hero3_fixed.zip`
+   and its pristine copy under `android_app/asset_backup/`, where a checkout carries them —
+   they are included only so the app builds), the sound bank built from the game's own
+   tones (`wie_android/assets/hero3_ma3.sf3`), the sprite atlas `wie_android/src/icons.bin`,
+   the costume sheets under `costumes/` (drawn over the game's own body frames), and the launcher and store art derived from the
+   game's title art (`android_app/app/src/main/res/mipmap-*`, `android_app/play/*.png`,
+   `android_app/tools/hero3_title_*`).
+
+3. Other third-party assets, each under its own terms:
+     wie_web/public/GeneralUser.sf3   GeneralUser GS 2.0.1 by S. Christian Collins; the
+                                      licence text is embedded in the file's INFO chunk
+     vendor/wie/fonts/neodgm.ttf      NeoDunggeunmo, SIL Open Font License 1.1
+                                      (vendor/wie/fonts/OFL.txt)
+
+4. Reverse engineering notes (`tools_re/dis/*`, `MIGRATION_LGT.md` and the other
+   design documents) describe that game's binary. They are observations about someone
+   else's work.

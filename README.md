@@ -34,3 +34,8 @@
 * 플레이버(main / vanilla): [`BRANCHES.md`](BRANCHES.md) · [`VANILLA_GAPS.md`](VANILLA_GAPS.md)
 * LGT 판 리버싱: [`MIGRATION_LGT.md`](MIGRATION_LGT.md)
 * 기능별 조사·설계 문서는 저장소 루트의 `*.md`
+
+## 라이선스
+
+이 프로젝트의 코드에는 라이선스를 부여하지 않는다 — [`LICENSE`](LICENSE). 게임과 그 파생물은 원 권리자의 것이고,
+`vendor/` 와 제3자 에셋은 각자의 라이선스를 따른다(같은 파일에 목록이 있다).
