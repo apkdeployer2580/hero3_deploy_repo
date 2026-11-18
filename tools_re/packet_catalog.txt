@@ -1,0 +1,95 @@
+Hero3 client->server request catalog - 27 send sites
+==============================================================================
+template: constant bytes shown in hex, ?? = runtime value
+only the final basic block before flush is shown (branch-safe);
+"[+earlier blocks]" means more bytes are emitted upstream on some path.
+
+flush @ 0x056a34  (fn ~0x056a08)  [session_init mode=3]
+    01 01 02
+flush @ 0x056d88  (fn ~0x056bf8)
+    01 3d <bytes> <bytes> ????????(LE) 00
+flush @ 0x056de2  (fn ~0x056bf8)  [+earlier blocks]
+    04 3e ??
+flush @ 0x056e20  (fn ~0x056bf8)  [+earlier blocks]
+    1f 00 <bytes>
+flush @ 0x056e66  (fn ~0x056bf8)  [+earlier blocks]
+    01 3e
+flush @ 0x056fb0  (fn ~0x056f3c)
+    05 3d 00
+flush @ 0x0575dc  (fn ~0x057394)
+    (none detected)
+flush @ 0x0576b8  (fn ~0x057394)
+    (none detected)
+flush @ 0x057968  (fn ~0x057568)  [+earlier blocks]
+    05 03 <bytes> ??
+flush @ 0x0579f8  (fn ~0x0575f8)  [+earlier blocks]
+    05 03 <bytes> ?? 05 3d ??
+flush @ 0x057e80  (fn ~0x057a80)
+    05 3d ??
+flush @ 0x057ec6  (fn ~0x057ac6)  [+earlier blocks]
+    05 3d ??
+flush @ 0x05801a  (fn ~0x057c1a)  [+earlier blocks]
+    05 40 ????????(LE) ??
+flush @ 0x06367e  (fn ~0x06327e)
+    05 41 <bytes> ??
+flush @ 0x063762  (fn ~0x063362)  [+earlier blocks]
+    05 05
+flush @ 0x063984  (fn ~0x063584)  [+earlier blocks]
+    05 04
+flush @ 0x063ac2  (fn ~0x0636c2)  [+earlier blocks]
+    05 04
+flush @ 0x064606  (fn ~0x064206)
+    (none detected)
+flush @ 0x0646a0  (fn ~0x0642a0)
+    (none detected)
+flush @ 0x064796  (fn ~0x064396)
+    (none detected)
+flush @ 0x06483c  (fn ~0x06443c)  [+earlier blocks]
+    05 3f <bytes>
+flush @ 0x070f00  (fn ~0x070d88)  [+earlier blocks]
+    (none detected)
+flush @ 0x0741c4  (fn ~0x07411c)
+    05 04
+flush @ 0x0745ca  (fn ~0x074544)
+    05 3e ????????(LE) ????????(LE)
+flush @ 0x074e74  (fn ~0x074d44)
+    05 42 ????????(LE)
+flush @ 0x074fa4  (fn ~0x074ec0)
+    05 06
+flush @ 0x07ebbc  (fn ~0x07eb60)
+    00 0a
+
+grouped by first constant byte:
+  0x00: 1 site(s)
+      0x07ebbc  00 0a
+  0x01: 3 site(s)
+      0x056a34  01 01 02
+      0x056d88  01 3d <bytes> <bytes> ????????(LE) 00
+      0x056e66  01 3e
+  0x04: 1 site(s)
+      0x056de2  04 3e ??
+  0x05: 15 site(s)
+      0x056fb0  05 3d 00
+      0x057968  05 03 <bytes> ??
+      0x0579f8  05 03 <bytes> ?? 05 3d ??
+      0x057e80  05 3d ??
+      0x057ec6  05 3d ??
+      0x05801a  05 40 ????????(LE) ??
+      0x06367e  05 41 <bytes> ??
+      0x063762  05 05
+      0x063984  05 04
+      0x063ac2  05 04
+      0x06483c  05 3f <bytes>
+      0x0741c4  05 04
+      0x0745ca  05 3e ????????(LE) ????????(LE)
+      0x074e74  05 42 ????????(LE)
+      0x074fa4  05 06
+  0x1f: 1 site(s)
+      0x056e20  1f 00 <bytes>
+  dynamic/unknown: 6 site(s)
+      0x0575dc  (none detected)
+      0x0576b8  (none detected)
+      0x064606  (none detected)
+      0x0646a0  (none detected)
+      0x064796  (none detected)
+      0x070f00  (none detected)

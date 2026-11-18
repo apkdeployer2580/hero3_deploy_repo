@@ -1,0 +1,32 @@
+07e71c  movs     r0, #0 
+07e71e  bl       #0x17e4c4 
+07e722  b        #0x17e658 
+07e724  ldr      r1, [sp] 
+07e726  ldr      r3, [pc, #0x64]   ; lit@0x7e78c = 0x00000a64
+07e728  ldr      r2, [r1] 
+07e72a  add      r3, sl 
+07e72c  ldr      r1, [r3] 
+07e72e  ldr      r0, [r6, #0x10] 
+07e730  ldr      r3, [r2, #0x34] 
+07e732  movs     r2, #0 
+07e734  bl       #0x1a42a0 
+07e738  ldr      r3, [pc, #0x48]   ; lit@0x7e784 = 0x00000814
+07e73a  add      r3, sl 
+07e73c  ldr      r3, [r3] 
+07e73e  mov      r2, r8 
+07e740  strb     r4, [r3] 
+07e742  movs     r3, #1 
+07e744  adds     r1, r0, #0 
+07e746  strb     r3, [r2] 
+07e748  cmp      r0, #0 
+07e74a  blt      #0x17e74e 
+07e74c  b        #0x17e658 
+07e74e  movs     r3, #0x13 
+07e750  rsbs     r3, r3, #0 
+07e752  cmp      r0, r3 
+07e754  bne      #0x17e758 
+07e756  b        #0x17e658 
+07e758  ldr      r3, [pc, #0x34]   ; lit@0x7e790 = 0x00000018
+07e75a  add      r3, sl 
+07e75c  ldr      r3, [r3] 
+07e75e  ldr      r2, [r3] 

@@ -1,0 +1,160 @@
+{
+ "region": "recovery (slot backup) + economy (network warehouse / money / cash / orb) request builders — Hero3 client.bin",
+ "summary": "## Category / op map (all confirmed via post-flush dialog-string pointers)\n\nEvery send site ends `bl 0x17e890` (flush) then `bl 0x175b98(dlgStr, 3,1,0)` to show a \"…중입니다\" busy dialog. The dialog arg is a `sl+imm` word whose relocated value points straight at the EUC-KR string, so op→feature is **proven, not guessed**:\n\n| cat | op | fn / send fo | dialog string (str_fo) | feature |\n|----|----|----|----|----|\n| **04** | **3d** | 0x70d88 / **0x70f00** | 슬롯 정보 서버에 저장중입니다 (0xaa740) | **RECOVERY slot backup (upload)** |\n| 05 | 41 | 0x63584 / 0x6367e | 아이템 올리기 중입니다 (0xa9f7c) | item UP → network warehouse |\n| 05 | 05 | 0x636c2 / 0x63762 | 아이템 버리기 중입니다 (0xa9f94) | item DISCARD (delete) |\n| 05 | 04 | 0x636c2 / 0x63984, 0x63ac2, 0x741c4 | 아이템 내리기 중입니다 (0xa9fcc) | item DOWN ← network warehouse |\n| 05 | 3f | 0x636c2 / 0x6483c | 캐시 아이템 정보 요청중입니다 (0xa96a0) | request cash-shop catalog/info |\n| 05 | 3e | 0x74544 / 0x745ca | 돈 내리기 중입니다 (0xaa8bc) | money DOWN (withdraw) |\n| 05 | 42 | 0x74d44 / 0x74e74 | 캐시템 구입중입니다;(강제 종료시…) (0xaa8d0) | CASH item purchase |\n| 05 | 06 | 0x74ec0 / 0x74fa4 | 오브 결합중입니다 (0xaa910) | ORB combine |\n| 05 | 40 | 0x57xxx / 0x5801a | (no post-flush string — branches away) | money/cash op, likely 돈 올리기 (UNPROVEN) |\n\nClean server model: **cat 0x01 = account/session, cat 0x04 = recovery (slot backup/restore), cat 0x05 = network-warehouse + economy.**\n\n## Serializers (confirmed this session)\n- 0x17e150 put_u8 · 0x17e184 put_bytes(src,n) · 0x17e1c4 put_u32_le · **0x17e300 = put_u64_le** (memcpy 8 bytes lo-word-first into buf+0xc+len, len+=8; disasm 0x7e30e-0x7e332) · 0x17e890 flush (writes total_len into the 4 reserved bytes at buf+0xc).\n- **0x14ad10 = zero-arg getter returning the current game/state singleton** `*(sl+0x444)` (0x4ad18-0x4ad22). In every builder `ctx = self + 0xa3ac` is a sub-struct of that singleton.\n\n## ★ RECOVERY BACKUP payload shape (the key deliverable)\nfn 0x70d88 is a menu state machine on arg r1: **-0x10**=init(slot=ctx[0x4c]=0), **-1**=cursor--/wrap→2, **-2**=cursor++/wrap→0 (⇒ **3 slots, index 0..2**), **-5**=CONFIRM→build+send.\n\nOn confirm (0x70e52+):\n1. `G_saves = *(sl+0x4a4)` — that slot's reloc points to the string **`./Hero3GameSave`** (0xa967c), i.e. the RMS/save-store name.\n2. `slotData = fn_194f18(G_saves, slotIndex)` (0x70e84). fn_194f18 sprintf-formats a per-slot key from `./Hero3GameSave`+slot (via 0x1a42a4) and looks the record up (0x194f88). If **null → '빈슬롯입니다' (empty slot, sl+0x964)** and no send.\n3. Emit: `put_u8(0x04); put_u8(0x3d); put_u8(slotIndex); put_bytes(*(slotData)+8, 0xdb=219)` (0x70ebe-0x70ee6).\n\nSo the recovery upload = **`04 3d <slot:u8> <219 bytes>`**, total_len = 226. The 219 bytes are the character's serialized save record taken verbatim from the in-memory `./Hero3GameSave` slot buffer, skipping an 8-byte record header (`*(slotData)` = payload ptr, `+8` = body). **For the private server: store these 219 bytes keyed by (account/phone, slot 0..2) and echo them back on restore; the client writes them straight back into the same slot buffer.** Internal layout of the 219 bytes is the same on-device Hero3 save record body studied in the C29/C30 save track (encryption state of this in-memory copy not provable statically here — MED).\n\nRestore/download counterpart is NOT in this region — it is the dispatch side (server→client) at 0x156a40, likely paired with the cat-04 requests seen there (`04 3e` @0x56de2, and cat-01 `01 3d`/`01 3e` session frames). Noted, out-of-scope-depth.\n\n## Economy field sources (all read from ctx = singleton+0xa3ac; `sel` = list cursor byte computed from singleton+0x9c72 table indexed by cursor singleton+0x9c71)\nTwo parallel 20-byte-stride arrays inside ctx:\n- **item list** field `ctx+sel*20+0x1b8` (u64) — sent by op 04 (내리기) and op 05 (버리기).\n- **money/cash list** fields `ctx+sel*20+0x320` (u64 amount) + `ctx+sel*20+0x32c` (u32 id) — sent by op 42 (cash buy) and op 40.\n- op 3e (money down) instead sends `*(singleton+0xcc)` (u32 id) + `ctx[0x2fc]` (u32 amount, guarded >0).\n- op 06 (orb) sends two u64 globals `*(*(sl+0x78c))` and `*(*(sl+0x80c))`, then **resets both to (s64)-1** (the two selected orbs; -1 = \"none\").\n- op 41 (item up) sends a **20-byte item record** (stack copy at r7-0x2c; byte@+8 = item type, gated: types 0xf/0x11/>0x1d rejected) + trailing `u8 ctx[0x1a5]`.\n- op 3f (cash info) sends a **12-byte struct**; +4 = an auto-incrementing request counter (`record[0x308]++`), +2/+3=0, rest not traced.\n\nAmount-vs-id semantics are inferred from offsets/guards (MED); op-codes, sizes, byte order and field offsets are disasm-exact (HIGH).",
+ "claims": [
+  {
+   "statement": "0x17e300 is put_u64_le: it memcpys 8 bytes (r0=lo word, r1=hi word, stored little-endian on stack) into TX buffer at buf+0xc+len and advances len by 8.",
+   "evidence": "fo 0x7e316 str r0,[sp]; 0x7e318 str r1,[sp,#4]; 0x7e31e ldrsh r0,[r4,#8](len); 0x7e320 adds r0,r4,r0; 0x7e324 adds r0,#0xc; 0x7e326 movs r2,#8; 0x7e328 bl 0x19f624(memcpy); 0x7e330 adds r3,#8; strh r3,[r4,#8]",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x14ad10 returns the current game/state singleton pointer *(sl+0x444) (zero args); all request builders use ctx = singleton + 0xa3ac.",
+   "evidence": "fo 0x4ad18 ldr r3,=0x67f1e; 0x4ad1e add sl,pc; 0x4ad20 add r3,sl (=sl+0x444); 0x4ad22 ldr r0,[r3]; 0x4ad28 bx lr. Builders load lit 0xa3ac and add to r0/self (e.g. 0x70db6, 0x74d72).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "RECOVERY slot backup request = 04 3d <slot:u8> <219 raw bytes>, emitted at flush 0x70f00; 219 bytes = the ./Hero3GameSave slot record body at *(slotData)+8.",
+   "evidence": "fo 0x70ebe put_u8(4); 0x70ec4 put_u8(0x3d); 0x70ed0-0x70ed8 put_u8(ctx[0x4c] slot); 0x70eb8 ldr r3,[r3](=*slotData); 0x70eba adds r3,#8; 0x70ee4 movs r1,#0xdb(219); 0x70ee6 bl 0x17e184(put_bytes); flush 0x70f00. slotData=fn_194f18(*(sl+0x4a4)='./Hero3GameSave',slot) @0x70e84.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Recovery menu has exactly 3 slots (0..2): state -0x10 inits slot=0, -1 decrements & wraps to 2, -2 increments & wraps to 0, -5 confirms/sends; null slot -> '빈슬롯입니다' and no send.",
+   "evidence": "fo 0x70dd0 ctx[0x4c]=0 (init); 0x70e0c subs #1 / 0x70e1e set 2 (wrap); 0x70e3e adds #1 / 0x70e4e set 0 (wrap); 0x70e5c cmp state,-5; 0x70e98 slotData==0 -> 0x175b98(sl+0x964='빈슬롯입니다',7,1,1).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op->feature bindings are proven via post-flush dialog strings: 04/3d='슬롯 정보 서버에 저장중입니다'(recovery); 05/3e='돈 내리기'; 05/42='캐시템 구입'; 05/06='오브 결합'; 05/41='아이템 올리기'; 05/05='아이템 버리기'; 05/04='아이템 내리기'; 05/3f='캐시 아이템 정보 요청'.",
+   "evidence": "Each fn loads sl+imm after flush and passes to 0x175b98. Resolved sl offsets->reloc->str_fo: 0x968->0xaa740, 0x9b8->0xaa8bc, 0x9bc->0xaa8d0, 0x9c0->0xaa910, 0x7e0->0xa9f7c, 0x7e4->0xa9f94, 0x7ec->0xa9fcc, 0x4ac->0xa96a0 (resolve_dlg.py / strings_decoded.txt).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Cash-item purchase = 05 42 <amount:u64_le @ctx+sel*20+0x320> <id:u32_le @ctx+sel*20+0x32c>, flush 0x74e74.",
+   "evidence": "fo 0x74e1c put_u8(5); 0x74e22 put_u8(0x42); 0x74e42 adds r3,+0x320(0xc8<<2); ldr r4,[r3,#4]/r3,[r3]; 0x74e4c bl 0x17e300(u64); 0x74e66 +0x32c(0xcb<<2); 0x74e70 bl 0x17e1c4(u32); flush 0x74e74.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Orb combine = 05 06 <orbA:u64_le=*(*(sl+0x78c))> <orbB:u64_le=*(*(sl+0x80c))>, flush 0x74fa4; both globals reset to (s64)-1 after send (=no selection).",
+   "evidence": "fo 0x74f74 put_u8(5); 0x74f7a put_u8(6); 0x74f80-0x74f8e u64 from *(sl+0x78c); 0x74f92-0x74fa0 u64 from *(sl+0x80c); flush 0x74fa4; 0x74fb8-0x74fca store -1/-1 into both.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Money down (withdraw) = 05 3e <id:u32_le=*(singleton+0xcc)> <amount:u32_le=ctx[0x2fc]>, flush 0x745ca; guarded by ctx[0x2fc]>0.",
+   "evidence": "fo 0x745a-... 0x7459a put_u8(5); 0x745a0 put_u8(0x3e); 0x745a6 bl 0x14ad10; 0x745ac adds #0xcc; 0x745b2 put_u32_le; 0x745bc +0xbf<<2(0x2fc); 0x745c6 put_u32_le; flush 0x745ca; guard 0x74594 cmp>0 ble skip.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Item down = 05 04 <item:u64_le @ctx+sel*20+0x1b8>; item discard = 05 05 <same field>; item down also emitted from delete_a fn 0x7411c/flush 0x741c4.",
+   "evidence": "fo 0x63956 put_u8(4)/0x63980 u64 @+0x1b8 flush 0x63984 (also 0x63ac2); 0x63734 put_u8(5)/0x6375e u64 @+0x1b8 flush 0x63762; 0x74196 put_u8(4)/0x741c0 u64 @+0x1b8 flush 0x741c4. +0x1b8 = 0xdc<<1.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Item up (upload to warehouse) = 05 41 <20-byte item record from stack r7-0x2c> <u8 ctx[0x1a5]>, flush 0x6367e; item-type byte@+8 gated (types 0xf/0x11/>0x1d rejected).",
+   "evidence": "fo 0x63650 put_u8(5); 0x63656 put_u8(0x41); 0x6365c-0x63664 put_bytes(r7-0x2c,0x14); 0x6366e adds ctx+0x1a5; ldrb; 0x6367a put_u8; flush 0x6367e. Gates at 0x635d8 cmp#0xf,0x6360a cmp#0x11,0x635a6 cmp#0x1d.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "Cash-item info request = 05 3f <12-byte struct from stack r7-0x28>, flush 0x6483c; struct +4 = auto-incrementing request counter record[0x308]++, +2/+3=0.",
+   "evidence": "fo 0x64806 ldr record+0x308; 0x6480e adds #1; str back; 0x64812 str r3,[r7-0x28+4]; 0x64818/0x64822 strb 0 at +3/+2; 0x64824 put_u8(5); 0x6482a put_u8(0x3f); 0x64836 movs r1,#0xc; put_bytes(12); flush 0x6483c.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "op 0x40 (flush 0x5801a) sends 05 40 <u64_le @ctx+sel*20+0x320> <u32_le @ctx+sel*20+0x32c> <u8 obj[0xa]> — same cash/money record fields as op 42 plus a trailing byte; feature likely 돈/캐시 올리기 but NOT string-grounded (branches to 0x158172 with no busy dialog).",
+   "evidence": "fo 0x57fe4 u64 @+0x320; 0x58008 u32 @+0x32c; 0x58012 ldrb [r3,#0xa]; 0x58016 put_u8; flush 0x5801a; 0x5801e b 0x158172 (no sl+imm dialog).",
+   "confidence": "LOW"
+  },
+  {
+   "statement": "The 0x64206/0x642a0/0x64396/0x6443c addresses in the brief are NOT send sites — they are state-machine branches inside fn 0x636c2 that set selection flags (singleton+0x9c84/0x9c85) and copy record fields into globals G_78c/G_80c; the actual sends of that function are 0x63762/0x63984/0x63ac2/0x6483c.",
+   "evidence": "fo 0x64206-0x643aa contains no bl 0x17e890/put_*; e.g. 0x64250 copies u64 @ctx+sel*20+0x1b8 into *(sl+0x80c); 0x64312/0x64336 strb flags at singleton+0x9c84; 0x64340 stores -1 into *(sl+0x78c).",
+   "confidence": "HIGH"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "0x70f00",
+   "template": "04 3d SS <219 bytes: character save-slot record body>",
+   "meaning": "RECOVERY slot backup / upload. Server stores the 219-byte blob keyed by (account, slot) and returns it on restore.",
+   "field_notes": "SS = slot index u8 (ctx[0x4c], 0..2). 219 (0xdb) bytes copied verbatim from *(slotData)+8 where slotData=fn_194f18('./Hero3GameSave', slot). total_len=226. cat=0x04 (recovery), distinct from cat 0x05 economy. Only sent when slot non-empty; empty slot shows '빈슬롯입니다'."
+  },
+  {
+   "site_fo": "0x6367e",
+   "template": "05 41 <20-byte item record> II",
+   "meaning": "Item UP: deposit selected inventory item into network warehouse (아이템 올리기).",
+   "field_notes": "20 bytes = stack copy (r7-0x2c) of the selected inventory item record; byte@+8 = item type (types 0x0f, 0x11, and >0x1d are rejected client-side before send). II = u8 ctx[0x1a5] (warehouse target/page). total_len=27."
+  },
+  {
+   "site_fo": "0x63762",
+   "template": "05 05 <AA AA AA AA AA AA AA AA>",
+   "meaning": "Item DISCARD / throw away (아이템 버리기) — the delete-item action.",
+   "field_notes": "8-byte u64 LE = *(ctx+sel*20+0x1b8), the selected item's id/handle. sel = list cursor. total_len=14."
+  },
+  {
+   "site_fo": "0x63984",
+   "template": "05 04 <AA AA AA AA AA AA AA AA>",
+   "meaning": "Item DOWN: withdraw item from network warehouse to inventory (아이템 내리기).",
+   "field_notes": "8-byte u64 LE = *(ctx+sel*20+0x1b8) selected item id/handle. Same payload emitted at 0x63ac2 (alt branch) and at 0x741c4 (fn 0x7411c). total_len=14."
+  },
+  {
+   "site_fo": "0x741c4",
+   "template": "05 04 <AA AA AA AA AA AA AA AA>",
+   "meaning": "Item DOWN (아이템 내리기) — duplicate of op 04 from the 0x7411c menu handler.",
+   "field_notes": "u64 LE = *(ctx+sel*20+0x1b8). sel computed from singleton+0x9c72 table. total_len=14."
+  },
+  {
+   "site_fo": "0x6483c",
+   "template": "05 3f <12-byte request struct>",
+   "meaning": "Request cash-shop item catalog/info (캐시 아이템 정보 요청).",
+   "field_notes": "12 bytes from stack r7-0x28: +2/+3 = 0; +4 (u32) = auto-incrementing request counter (record[0x308]++); +0/+1 and +8..11 not traced. Paging/sequence request. total_len=18."
+  },
+  {
+   "site_fo": "0x745ca",
+   "template": "05 3e <ID ID ID ID> <AM AM AM AM>",
+   "meaning": "Money DOWN: withdraw money from network to inventory (돈 내리기).",
+   "field_notes": "ID = u32 LE *(singleton+0xcc) (currency/char id). AM = u32 LE ctx[0x2fc] amount, guarded > 0. total_len=14."
+  },
+  {
+   "site_fo": "0x74e74",
+   "template": "05 42 <AM AM AM AM AM AM AM AM> <ID ID ID ID>",
+   "meaning": "CASH item purchase (캐시템 구입). Warns items may be lost on force-quit.",
+   "field_notes": "AM = u64 LE price/amount = *(ctx+sel*20+0x320). ID = u32 LE item id = *(ctx+sel*20+0x32c). sel = cash-list cursor. total_len=18."
+  },
+  {
+   "site_fo": "0x74fa4",
+   "template": "05 06 <A A A A A A A A> <B B B B B B B B>",
+   "meaning": "ORB combine (오브 결합).",
+   "field_notes": "A = u64 LE orb1 = *(*(sl+0x78c)); B = u64 LE orb2 = *(*(sl+0x80c)). Both globals reset to (s64)-1 after send (-1 = no selection). total_len=22."
+  },
+  {
+   "site_fo": "0x5801a",
+   "template": "05 40 <AM AM AM AM AM AM AM AM> <ID ID ID ID> BB",
+   "meaning": "Uncertain money/cash op (likely 돈/캐시 올리기 deposit) — NOT string-grounded.",
+   "field_notes": "AM = u64 LE *(ctx+sel*20+0x320); ID = u32 LE *(ctx+sel*20+0x32c) (same fields as op 42); BB = u8 *(obj+0xa). No busy dialog after flush (branches to 0x158172). Feature guess LOW confidence. total_len=19."
+  }
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/recovery_slot.txt",
+  "d:/tmp/wie_app/tools_re/dis/economy.txt",
+  "d:/tmp/wie_app/tools_re/dis/delete_a.txt",
+  "d:/tmp/wie_app/tools_re/dis/delete_b.txt",
+  "d:/tmp/wie_app/tools_re/dis/dynamic_64.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_6367e.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_63762.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_63984.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_63ac2.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_6483c.txt",
+  "d:/tmp/wie_app/tools_re/dis/s_5801a.txt",
+  "d:/tmp/wie_app/tools_re/dis/fn_194f18.txt",
+  "d:/tmp/wie_app/tools_re/dis/put_s64.txt",
+  "d:/tmp/wie_app/tools_re/dis/getobj.txt",
+  "d:/tmp/wie_app/tools_re/dis/op41_build.txt",
+  "d:/tmp/wie_app/tools_re/dis/strings_decoded.txt",
+  "d:/tmp/wie_app/tools_re/bind_strings.py",
+  "d:/tmp/wie_app/tools_re/resolve_dlg.py"
+ ],
+ "open_questions": [
+  "Restore/download of a backed-up slot is not in this region — it is the server->client path parsed at dispatch 0x156a40, likely paired with cat-04 op 3e (0x56de2) and/or cat-01 op 3d/3e (0x56d88/0x56e66). Needs the dispatch agent to confirm the response frame that carries the 219 bytes back.",
+  "Internal structure of the 219-byte recovery blob (field offsets within the character save record) and whether this in-memory copy is plaintext or MX-DES ciphertext — resolvable via the C29/C30 save-decrypt track and a real save-diff, not statically here.",
+  "op 0x40 (0x5801a) feature is unproven (no busy-dialog string). It reuses the cash/money record fields (+0x320 u64, +0x32c u32) plus a trailing u8; most likely 돈/캐시 올리기 (deposit) but must be confirmed by tracing its entry menu or by live capture.",
+  "Exact geometry of the ctx (singleton+0xa3ac) list arrays: item list field @+0x1b8 vs money/cash fields @+0x320/+0x32c are parallel 20-byte-stride arrays sharing the same 'sel' cursor; the array bases/element counts were not enumerated (not needed for the request templates but relevant if the server must validate indices).",
+  "The +8 header skipped before the 219-byte body (*(slotData) first 8 bytes) — likely [len][slot] or a record tag; contents not decoded."
+ ]
+}

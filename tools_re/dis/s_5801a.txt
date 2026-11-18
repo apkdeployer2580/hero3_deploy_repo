@@ -1,0 +1,73 @@
+057fc0  adds     r3, r7, #0 
+057fc2  subs     r3, #0xc 
+057fc4  ldr      r1, [r3] 
+057fc6  adds     r3, r7, #0 
+057fc8  subs     r3, #0x25 
+057fca  ldrb     r3, [r3] 
+057fcc  lsls     r3, r3, #0x18 
+057fce  asrs     r2, r3, #0x18 
+057fd0  movs     r3, #0x14 
+057fd2  muls     r3, r2, r3 
+057fd4  adds     r3, r3, r1 
+057fd6  movs     r2, #0xc8 
+057fd8  lsls     r2, r2, #2 
+057fda  adds     r3, r3, r2 
+057fdc  ldr      r4, [r3, #4] 
+057fde  ldr      r3, [r3] 
+057fe0  adds     r1, r4, #0 
+057fe2  adds     r0, r3, #0 
+057fe4  bl       #0x17e300 
+057fe8  adds     r3, r7, #0 
+057fea  subs     r3, #0xc 
+057fec  ldr      r1, [r3] 
+057fee  adds     r3, r7, #0 
+057ff0  subs     r3, #0x25 
+057ff2  ldrb     r3, [r3] 
+057ff4  lsls     r3, r3, #0x18 
+057ff6  asrs     r2, r3, #0x18 
+057ff8  movs     r3, #0x14 
+057ffa  muls     r3, r2, r3 
+057ffc  adds     r3, r3, r1 
+057ffe  movs     r4, #0xcb 
+058000  lsls     r4, r4, #2 
+058002  adds     r3, r3, r4 
+058004  ldr      r3, [r3] 
+058006  adds     r0, r3, #0 
+058008  bl       #0x17e1c4 
+05800c  adds     r3, r7, #0 
+05800e  subs     r3, #0x10 
+058010  ldr      r3, [r3] 
+058012  ldrb     r3, [r3, #0xa] 
+058014  adds     r0, r3, #0 
+058016  bl       #0x17e150 
+05801a  bl       #0x17e890 
+05801e  b        #0x158172 
+058020  adds     r3, r7, #0 
+058022  subs     r3, #0x10 
+058024  ldr      r3, [r3] 
+058026  adds     r3, #0xc 
+058028  adds     r0, r3, #0 
+05802a  movs     r1, #7 
+05802c  movs     r2, #1 
+05802e  movs     r3, #1 
+058030  bl       #0x175b98 
+058034  b        #0x158172 
+058036  adds     r3, r7, #0 
+058038  subs     r3, #0x10 
+05803a  ldr      r3, [r3] 
+05803c  ldrb     r3, [r3, #0xa] 
+05803e  cmp      r3, #0 
+058040  bne      #0x158044 
+058042  b        #0x15815e 
+058044  adds     r3, r7, #0 
+058046  subs     r3, #0xd0 
+058048  movs     r2, #0x80 
+05804a  adds     r0, r3, #0 
+05804c  movs     r1, #0 
+05804e  bl       #0x19fb78 
+058052  ldr      r0, [pc, #0x140]   ; lit@0x58194 = 0xfffffef0
+058054  adds     r3, r7, r0 
+058056  movs     r2, #0x40 
+058058  adds     r0, r3, #0 
+05805a  movs     r1, #0 
+05805c  bl       #0x19fb78 

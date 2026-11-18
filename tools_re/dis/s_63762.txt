@@ -1,0 +1,49 @@
+063720  lsls     r3, r3, #0x18 
+063722  asrs     r3, r3, #0x18 
+063724  adds     r3, r3, r4 
+063726  ldr      r1, [pc, #0x29c]   ; lit@0x639c4 = 0x00009c70
+063728  adds     r3, r3, r1 
+06372a  ldrb     r3, [r3, #2] 
+06372c  strb     r3, [r5] 
+06372e  movs     r0, #5 
+063730  bl       #0x17e150 
+063734  movs     r0, #5 
+063736  bl       #0x17e150 
+06373a  adds     r3, r7, #0 
+06373c  subs     r3, #0x10 
+06373e  ldr      r1, [r3] 
+063740  adds     r3, r7, #0 
+063742  subs     r3, #0x16 
+063744  ldrb     r3, [r3] 
+063746  lsls     r3, r3, #0x18 
+063748  asrs     r2, r3, #0x18 
+06374a  movs     r3, #0x14 
+06374c  muls     r3, r2, r3 
+06374e  adds     r3, r3, r1 
+063750  movs     r2, #0xdc 
+063752  lsls     r2, r2, #1 
+063754  adds     r3, r3, r2 
+063756  ldr      r4, [r3, #4] 
+063758  ldr      r3, [r3] 
+06375a  adds     r1, r4, #0 
+06375c  adds     r0, r3, #0 
+06375e  bl       #0x17e300 
+063762  bl       #0x17e890 
+063766  ldr      r3, [pc, #0x260]   ; lit@0x639c8 = 0x000007e4 (reloc-> 0x16d0 '[')
+063768  add      r3, sl 
+06376a  ldr      r3, [r3] 
+06376c  adds     r0, r3, #0 
+06376e  movs     r1, #3 
+063770  movs     r2, #1 
+063772  movs     r3, #0 
+063774  bl       #0x175b98 
+063778  b        #0x163b3c 
+06377a  adds     r5, r7, #0 
+06377c  subs     r5, #0x16 
+06377e  bl       #0x14ad10 
+063782  adds     r4, r0, #0 
+063784  bl       #0x14ad10 
+063788  adds     r3, r0, #0 
+06378a  ldr      r1, [pc, #0x234]   ; lit@0x639c0 = 0x00009c71
+06378c  adds     r3, r3, r1 
+06378e  ldrb     r3, [r3] 

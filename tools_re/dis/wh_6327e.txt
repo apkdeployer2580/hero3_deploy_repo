@@ -1,0 +1,111 @@
+06327e  movs     r0, r0 
+063280  ldr      r4, [sp, #0x1c4] 
+063282  movs     r0, r0 
+063284  ldr      r4, [sp, #0x1c0] 
+063286  movs     r0, r0 
+063288  ldr      r4, [sp, #0x218] 
+06328a  movs     r0, r0 
+06328c  ldc2     p15, c15, [ip, #0x3fc]! 
+063290  ldr      r4, [sp, #0x1b8] 
+063292  movs     r0, r0 
+063294  ldr      r4, [sp, #0x1bc] 
+063296  movs     r0, r0 
+063298  lsls     r0, r1, #0x1f 
+06329a  movs     r0, r0 
+06329c  adds     r3, r7, #0 
+06329e  subs     r3, #0x2c 
+0632a0  movs     r2, #0x14 
+0632a2  adds     r0, r3, #0 
+0632a4  movs     r1, #0 
+0632a6  bl       #0x19fb78 
+0632aa  adds     r4, r7, #0 
+0632ac  subs     r4, #0x30 
+0632ae  bl       #0x14ad10 
+0632b2  adds     r3, r0, #0 
+0632b4  ldr      r2, [pc, #0x37c]   ; lit@0x63634 = 0x00009e28
+0632b6  adds     r3, r3, r2 
+0632b8  ldr      r3, [r3] 
+0632ba  ldr      r3, [r3] 
+0632bc  adds     r3, #8 
+0632be  str      r3, [r4] 
+0632c0  adds     r2, r7, #0 
+0632c2  subs     r2, #0x34 
+0632c4  adds     r3, r7, #0 
+0632c6  subs     r3, #0x30 
+0632c8  ldr      r3, [r3] 
+0632ca  ldr      r3, [r3] 
+0632cc  ldr      r3, [r3] 
+0632ce  adds     r3, #8 
+0632d0  str      r3, [r2] 
+0632d2  adds     r2, r7, #0 
+0632d4  subs     r2, #0x38 
+0632d6  movs     r3, #0 
+0632d8  str      r3, [r2] 
+0632da  adds     r2, r7, #0 
+0632dc  subs     r2, #0x3c 
+0632de  adds     r3, r7, #0 
+0632e0  subs     r3, #0x30 
+0632e2  ldr      r3, [r3] 
+0632e4  ldr      r3, [r3, #0x38] 
+0632e6  ldr      r3, [r3] 
+0632e8  adds     r3, #8 
+0632ea  str      r3, [r2] 
+0632ec  adds     r0, r7, #0 
+0632ee  subs     r0, #0x2c 
+0632f0  adds     r3, r7, #0 
+0632f2  subs     r3, #0x30 
+0632f4  ldr      r4, [r3] 
+0632f6  adds     r3, r7, #0 
+0632f8  subs     r3, #0x16 
+0632fa  ldrb     r3, [r3] 
+0632fc  lsls     r3, r3, #0x18 
+0632fe  asrs     r1, r3, #0x18 
+063300  adds     r3, r7, #0 
+063302  subs     r3, #0x15 
+063304  ldrb     r3, [r3] 
+063306  lsls     r3, r3, #0x18 
+063308  asrs     r2, r3, #0x18 
+06330a  movs     r3, #0xf1 
+06330c  lsls     r3, r3, #2 
+06330e  muls     r2, r3, r2 
+063310  movs     r3, #0x3c 
+063312  muls     r3, r1, r3 
+063314  adds     r3, r2, r3 
+063316  adds     r3, r3, r4 
+063318  movs     r1, #0xef 
+06331a  lsls     r1, r1, #2 
+06331c  adds     r3, r3, r1 
+06331e  ldr      r4, [r3, #4] 
+063320  ldr      r3, [r3] 
+063322  str      r3, [r0] 
+063324  str      r4, [r0, #4] 
+063326  adds     r4, r7, #0 
+063328  subs     r4, #0x2c 
+06332a  adds     r3, r7, #0 
+06332c  subs     r3, #0x30 
+06332e  ldr      r0, [r3] 
+063330  adds     r3, r7, #0 
+063332  subs     r3, #0x16 
+063334  ldrb     r3, [r3] 
+063336  lsls     r3, r3, #0x18 
+063338  asrs     r1, r3, #0x18 
+06333a  adds     r3, r7, #0 
+06333c  subs     r3, #0x15 
+06333e  ldrb     r3, [r3] 
+063340  lsls     r3, r3, #0x18 
+063342  asrs     r2, r3, #0x18 
+063344  movs     r3, #0xf1 
+063346  lsls     r3, r3, #2 
+063348  muls     r2, r3, r2 
+06334a  movs     r3, #0x3c 
+06334c  muls     r3, r1, r3 
+06334e  adds     r3, r2, r3 
+063350  adds     r3, r3, r0 
+063352  movs     r2, #0xed 
+063354  lsls     r2, r2, #2 
+063356  adds     r3, r3, r2 
+063358  ldrh     r3, [r3, #2] 
+06335a  strb     r3, [r4, #8] 
+06335c  adds     r4, r7, #0 
+06335e  subs     r4, #0x2c 
+063360  adds     r3, r7, #0 

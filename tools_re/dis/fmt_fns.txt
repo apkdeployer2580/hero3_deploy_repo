@@ -1,0 +1,52 @@
+0a4290  mov      pc, lr 
+0a4292  mov      r8, r8 
+0a4294  bx       r0 
+0a4296  mov      r8, r8 
+0a4298  bx       r1 
+0a429a  mov      r8, r8 
+0a429c  bx       r2 
+0a429e  mov      r8, r8 
+0a42a0  bx       r3 
+0a42a2  mov      r8, r8 
+0a42a4  bx       r4 
+0a42a6  mov      r8, r8 
+0a42a8  bx       r5 
+0a42aa  mov      r8, r8 
+0a42ac  bx       r6 
+0a42ae  mov      r8, r8 
+0a42b0  bx       r7 
+0a42b2  mov      r8, r8 
+0a42b4  bx       r8 
+0a42b6  mov      r8, r8 
+0a42b8  bx       sb 
+0a42ba  mov      r8, r8 
+0a42bc  bx       sl 
+0a42be  mov      r8, r8 
+0a42c0  bx       fp 
+0a42c2  mov      r8, r8 
+0a42c4  bx       ip 
+0a42c6  mov      r8, r8 
+0a42c8  bx       sp 
+0a42ca  mov      r8, r8 
+0a42cc  bx       lr 
+0a42ce  mov      r8, r8 
+0a42d0  push     {r4, r5, lr} 
+0a42d2  ldr      r3, [pc, #0x34]   ; lit@0xa4308 = 0x00000000
+0a42d4  ldr      r2, [pc, #0x2c]   ; lit@0xa4304 = 0x00000000
+0a42d6  adds     r5, r1, #0 
+0a42d8  adds     r4, r0, #0 
+0a42da  bl       #0x1a4fa4 
+0a42de  cmp      r0, #0 
+0a42e0  blt      #0x1a42ec 
+0a42e2  adds     r1, r5, #0 
+0a42e4  adds     r0, r4, #0 
+0a42e6  bl       #0x1a52b0 
+0a42ea  pop      {r4, r5, pc} 
+0a42ec  adds     r1, r5, #0 
+0a42ee  adds     r0, r4, #0 
+0a42f0  bl       #0x1a5168 
+0a42f4  bl       #0x1a52b0 
+0a42f8  movs     r4, #0 
+0a42fa  rsbs     r3, r0, #0 
+0a42fc  sbcs     r4, r1 
+0a42fe  adds     r1, r4, #0 

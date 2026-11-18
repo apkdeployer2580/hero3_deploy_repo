@@ -1,0 +1,51 @@
+07eb60  push     {r4, r5, lr} 
+07eb62  mov      r5, sl 
+07eb64  push     {r5} 
+07eb66  ldr      r3, [pc, #0x5c]   ; lit@0x7ebc4 = 0x000340d0
+07eb68  mov      sl, r3 
+07eb6a  ldr      r3, [pc, #0x5c]   ; lit@0x7ebc8 = 0x000009d0
+07eb6c  add      sl, pc 
+07eb6e  add      r3, sl 
+07eb70  ldr      r5, [r3] 
+07eb72  ldrb     r3, [r5, #0x14] 
+07eb74  cmp      r3, #0 
+07eb76  bne      #0x17eb7e 
+07eb78  pop      {r3} 
+07eb7a  mov      sl, r3 
+07eb7c  pop      {r4, r5, pc} 
+07eb7e  bl       #0x14ad10 
+07eb82  ldr      r3, [r5, #0xc] 
+07eb84  ldr      r2, [r0, #0x60] 
+07eb86  cmp      r2, r3 
+07eb88  bgt      #0x17eb96 
+07eb8a  cmp      r2, r3 
+07eb8c  bne      #0x17eb78 
+07eb8e  ldr      r2, [r0, #0x5c] 
+07eb90  ldr      r3, [r5, #8] 
+07eb92  cmp      r2, r3 
+07eb94  bls      #0x17eb78 
+07eb96  ldr      r3, [pc, #0x34]   ; lit@0x7ebcc = 0x00000018
+07eb98  add      r3, sl 
+07eb9a  ldr      r3, [r3] 
+07eb9c  ldr      r3, [r3] 
+07eb9e  ldr      r0, [r3, #0x70] 
+07eba0  bl       #0x1a4294 
+07eba4  ldr      r3, [pc, #0x28]   ; lit@0x7ebd0 = 0x00001388
+07eba6  ldr      r4, [pc, #0x2c]   ; lit@0x7ebd4 = 0x00000000
+07eba8  adds     r3, r3, r0 
+07ebaa  adcs     r4, r1 
+07ebac  str      r3, [r5, #8] 
+07ebae  str      r4, [r5, #0xc] 
+07ebb0  movs     r0, #0 
+07ebb2  bl       #0x17e150 
+07ebb6  movs     r0, #0xa 
+07ebb8  bl       #0x17e150 
+07ebbc  bl       #0x17e890 
+07ebc0  b        #0x17eb78 
+07ebc2  movs     r0, r0 
+07ebc4  lsrs     r0, r2 
+07ebc6  movs     r3, r0 
+07ebc8  lsrs     r0, r2, #7 
+07ebca  movs     r0, r0 
+07ebcc  movs     r0, r3 
+07ebce  movs     r0, r0 

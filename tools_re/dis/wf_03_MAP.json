@@ -1,0 +1,122 @@
+{
+ "region": "Server->Client response dispatcher fn @ guest 0x156a40 (fo 0x56a40) and its per-category handlers, Hero3 (client.bin, KTF WIPI ARM Thumb).",
+ "summary": "## Response dispatcher model (fn fo 0x56a40, guest 0x156a40)\n\nThis is the consume-one-server-reply routine. Flow: `rx_peek (bl 0x17e9e8)` -> if NULL, return (no frame). Else `rx_pop (bl 0x17ea14)`, compute `p = *node + 8` (message struct pointer), reset a cursor, read a length halfword, guard it, extract `cat`/`op`, switch on `cat`, dispatch, then release the node. Both the too-short path AND the normal-completion path end by calling the SAME cleanup `G->vtable[0x58](node)` (not an error-only handler).\n\n### Response frame layout (relative to `p = *node + 8`), all HIGH:\n- `p+0`  u16 `payload_len` (read at 0x56a88 `ldrh [p]`; sign-extended; **guard `cmp #5; bgt` at 0x56a8e/0x56a90** — `len<=5` => short/error path, `len>5` => dispatch).\n- `p+2`  u16 cursor — **zeroed on entry** (0x56a7e-0x56a80 `strh #0,[p,#2]`), a read/consumed pointer reset.\n- `p+4`  u32 unknown (4-byte header gap; not touched here).\n- `p+8`  u8 **cat** = payload[0] (0x56abe `ldrb [p,#8]`, sign-ext).\n- `p+9`  u8 **op**  = payload[1] (0x56ad0 `ldrb [p,#9]`, sign-ext).\n- `p+0xa` u8 first data byte / inline length (cat64 uses it as string length; cat4 clamps `<=8`).\n- `p+0xb` data start (string body for cat 0x1f and cat 0x64).\n\nSo the on-wire server frame is `[u32 LE total_len][ 8-byte node header {u16 len, u16 cursor, u32 ?} ][cat][op][data...]`; the pump (fo 0x7e63c) strips the u32 and stores from the header. A valid actionable reply has `payload_len > 5` (cat+op+>=4 data). Frames `<=5` are silently popped & released with NO dispatch.\n\n### Short/error path (0x56a92-0x56aa6) = the vtable-0x58 call:\n`G = *(sl+0x18)` (network/UI singleton object, reloc slot -> ~fo 0xc338c); `vt = *G`; `bl 0x1a429c` which is a `bx r2` veneer (confirmed at fo 0xa429c) calling `vt[0x58](node)`. **Identical call is the completion epilogue at 0x56bd8-0x56be8.** => vtable slot 0x58 = \"consume/release this rx node back to the ring/pool\" (shared cleanup; concrete body is a runtime-bound virtual method, not statically resolvable to one address).\n\n### cat switch (value = payload[0], chained compares 0x56aee-0x56b4a). Handled: {0,1,4,5,0x1f,0x64}; all else -> cleanup(default). Each handler gets args `(op, node)`:\n| cat | handler | what it does |\n|----|---------|--------------|\n| 0    | fo 0x582e0 | **STUB no-op** (saves args, `pop{r7,pc}` at 0x582f2). cat0 replies acknowledged, ignored. |\n| 1    | fo 0x56bf8 (local) | SMS/slot/notice request-response state machine. **op secondary switch** {1, 0x3d, 0x3e; op==6 -> nop-exit}. |\n| 4    | fo 0x56f3c | Slot-save channel. **op switch** {0x3d, 0x3e}; op==0x3d sends `05 3d 00` then persists via writer 0x1951b0 to \"./Hero3SlotSave\". |\n| 5    | fo 0x57394 | **Main sub-protocol: op JUMP-TABLE** `(op-3)`, bounds `<=0x3f` (else default 0x158172), `pc = jt + jt[(op-3)*4]`, jt=`sl-0x94b4`. 0x40 cases -> matches all `05 xx` send families (warehouse/shop/orb/money). |\n| 0x1f | INLINE (0x56bb0) | calls 0x17e4c4(0) then `0x175b98(p+0xb, 7,1,1)` = display a text popup from data@payload+3. |\n| 0x64 | fo 0x581a8 | `memcpy(G2+0xa0, p+0xb, count=p[0xa])` + null-term (length-prefixed server message string into the overlay buffer), then **op switch** {0,1,>1}. |\n\n### op IS a secondary switch (item 3): YES for cat 1 (explicit compares), cat 4 (explicit), cat 5 (computed jump table on op-3), cat 0x64 (explicit); cat 0 ignores op; cat 0x1f ignores op.\n\n### Session context object G2 (item 4):\n`G2 = getRoot(bl 0x14ad10) + 0xa3ac` — the online/network context sub-struct (SAME base+0xa3ac used by every handler AND by the WAIT overlay draw fn 0x72b18 where `G2 = screen_this + 0xa3ac`). Observed fields:\n- `G2+0x38` = **protocol state variable** (values 7, 9, 0xd observed; cat1/op0x3e writes `=0xd` at 0x56f04). HIGH that it's the state var, MED on exact enum meaning.\n- `G2+0x40` = **flag cleared to 0** at fo 0x56e58 (cat1/op0x3d default path, right before sending `01 3e`). **Best \"WAIT->done\" candidate (MED).**\n- `G2+0xa0` = **server-message text buffer** filled by cat64; the \"서버 응답 기다리는중\" overlay (draw fn fo 0x72b18) shows this custom message when `*(G2+0xa0)!=0`, else the generic WAIT text (string \"서버 응답 기다리는중\" @ fo 0xaa880, slot sl+0x9a8) with animated dots.\n- `G2+0x4c` = current slot index byte (echoed to server as the `<b>` in `04 3e <slot>`).\n- `G2+0x1a0` = screen/UI object ptr (disposed+recreated in cat1/op0x3e via vt[0x54] alloc).\n- `G2+0x460` = overlay header-box gate byte.\n\n### Feature-scope strings decoded (clean EUC-KR): 서버 응답 기다리는중 (WAIT, 0xaa880), 슬롯 정보 요청중입니다 (0xa9600), SMS 요청중입니다 (0xa9618), 공지사항 요청중입니다 (0xa9638), ./Hero3SlotSave (0xa9650), 캐시템 구입중입니다 (0xaa8d0), 오브 결합중입니다 (0xaa910), 돈 내리기 중입니다 (0xaa8bc), 저장중입니다 (0xaa751), 창고가 가득찼습니다 (0xa9fe9), 무작동 5분 경과하였습니다 (0xab1c0), 연결이 종료되었습니다 (0xaa837), 접속할 수 없습니다 (0xaa807).\n\n### PROVEN vs INFERRED\nPROVEN from disasm: frame offsets, len guard, cat set {0,1,4,5,0x1f,0x64}, each handler fo, op-as-secondary-switch, cat0=stub, cat5=jumptable(op-3), cat64 string copy, cat1 op cases + their sends, G2=root+0xa3ac, G2+0x40=0 clear, G2+0xa0 overlay binding. INFERRED: vtable[0x58]=\"release node\" (role from shared use, body runtime-bound); G2+0x38 exact enum semantics; that G2+0x40 is THE waiting flag (it's a clear on one response path, not yet cross-checked to a setter at a send site).",
+ "claims": [
+  {
+   "statement": "Response frame: dispatcher reads u16 payload_len at p+0 (p=*node+8), guards 'cmp #5; bgt' — len<=5 => short path, len>5 => dispatch; cat=u8 at p+8 (payload[0]), op=u8 at p+9 (payload[1]); p+2 (u16 cursor) is zeroed on entry.",
+   "evidence": "fo 0x56a7e-0x56a80 strh #0,[p,#2]; 0x56a86-0x56a90 ldrh r3,[p]; lsls/asrs #0x10; cmp r3,#5; bgt 0x156ab4; 0x56abe ldrb r3,[p,#8] (cat); 0x56ad0 ldrb r3,[p,#9] (op).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The <=5 short/error path calls G->vtable[0x58](node); the very same call is the normal-completion epilogue, so vtable slot 0x58 is shared rx-node release/cleanup, not an error-specific handler. The BL goes through veneer 0x1a429c = 'bx r2'.",
+   "evidence": "fo 0x56a92-0x56aa6: ldr r3,[sl+0x18]=G; ldr r2,[G]; ldr r2,[r2,#0x58]; r0=node; bl 0x1a429c. Epilogue fo 0x56bd8-0x56be8 identical. Veneer fo 0xa429c: 'bx r2'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Dispatcher switches on cat=payload[0]; handled categories are exactly {0,1,4,5,0x1f,0x64}, every other value falls through to cleanup. Each named handler is invoked with args (op, node).",
+   "evidence": "fo 0x56aee-0x56b4a chained cmp: ==4->0x156b88, >4->{==0x1f,==5,==0x64}, ==0->0x156b60, ==1->0x156b74, default b 0x156bd8. Calls at 0x56b5a(0x1581a8),0x56b6e(0x1582e0),0x56b82(0x156bf8),0x56b96(0x156f3c),0x56baa(0x157394).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==0 handler (fo 0x582e0) is a no-op stub: saves r0/r1 to stack and returns immediately.",
+   "evidence": "fo 0x582e0 push{r7,lr}; str r0,[r7-4]; str r1,[r7-8]; 0x582f0 mov sp,r7; pop{r7,pc}. Next fn starts 0x582f4 (unrelated).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==1 handler (fo 0x56bf8) is a request-response state machine over the online context G2=root+0xa3ac; op is a secondary switch {1,0x3d,0x3e}, op==6 exits as nop. It emits client sends 01 3d (op1), and per G2+0x38 state emits 04 3e<slot> / 1f 00 'SMS HERO3' / 01 3e (op0x3d), and rebuilds screen obj G2+0x1a0 setting state G2+0x38=0xd (op0x3e).",
+   "evidence": "fo 0x56c2a G2=+0xa3ac; 0x56c44-0x56c80 switch op {6->exit,1->0x56c84,0x3d->0x56d8e,0x3e->0x56e6c}; 0x56d94 cmp *(G2+0x38),#9; 0x56dee cmp #7; sends at 0x56d88/0x56de2/0x56e20/0x56e66; 0x56f04 str #0xd,[G2+0x38].",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==1/op==0x3d default path clears flag *(G2+0x40)=0 immediately before sending 01 3e — best candidate for the WAIT->done flag.",
+   "evidence": "fo 0x56e50-0x56e58 ldr r2,[r7-0x10](=G2); movs r3,#0; str r3,[r2,#0x40]; then 0x56e5a put_u8(1);0x56e60 put_u8(0x3e);0x56e66 flush.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "cat==4 handler (fo 0x56f3c): op secondary switch {0x3d,0x3e}; op==0x3d sends 05 3d 00 then persists slot state to './Hero3SlotSave' via writer fn 0x1951b0.",
+   "evidence": "fo 0x56f8a cmp op,#0x3d; 0x56f96 cmp #0x3e; 0x56f9e-0x56fb0 put_u8(5)/put_u8(0x3d)/put_u8(0)/flush; 0x5701a ldr str[sl+0x49c='./Hero3SlotSave']; 0x57026 bl 0x1951b0.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==5 handler (fo 0x57394) uses op as a computed jump table: idx=op-3, bounds-check '<=0x3f' (else default 0x158172), pc = jt + jt[idx*4], jt=sl-0x94b4. 0x40 cases — the main network sub-protocol (warehouse/cash-shop/orb/money, matching the 05 xx send families).",
+   "evidence": "fo 0x573ce subs r1,op,#3; 0x573e0 cmp #0x3f; bls 0x1573e8 (else bl 0x158172); 0x573ee lsls (idx)*4; 0x573f0 add jt(sl+0xffff6b4c); ldr; add; 0x573fe mov pc,r3. First case 0x57400 zeroes G2+0x1a8/0x1b8/0x1a4/0x1a5.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==0x1f handler is inline: calls 0x17e4c4(0) then message-display fn 0x175b98(p+0xb, 7,1,1) — pops up a server-sent text string located at payload offset +3.",
+   "evidence": "fo 0x56bb0-0x56bd4: [r7-0x14]=*node+8=p; movs r0,#0; bl 0x17e4c4; r0=p+0xb; movs r1,#7;r2,#1;r3,#1; bl 0x175b98.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat==0x64 handler (fo 0x581a8) copies a length-prefixed string from the reply (count=p[0xa]=payload+2, bytes at p+0xb=payload+3) into buffer G2+0xa0 and null-terminates it, then switches on op {0,1,>1}. G2+0xa0 is the WAIT-overlay message buffer.",
+   "evidence": "fo 0x581e2 ldrb [p+0xa]->[r7-0xd]; 0x58200 r1=G2+0xa0; 0x5820a r2=count; bl 0x19f624(memcpy); 0x58234 strb #0 at G2+0xa0+count; 0x58242-0x5824c switch op.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 'waiting for server response' overlay (draw fn fo 0x72b18) reads *(u8*)(G2+0xa0): nonzero => draw that server message; zero => draw generic string '서버 응답 기다리는중' (fo 0xaa880, slot sl+0x9a8) with a frame-counter-driven animated dots. Confirms G2=screen_this+0xa3ac and the cat64 buffer binding.",
+   "evidence": "fo 0x72b3c r3=arg0+0xa3ac->[r7-0xc]; 0x72b9c-0x72ba8 ldrb [G2+0xa0]; cmp #0; beq 0x172bc6; 0x72c46 ldr r6,[sl+0x9a8]=WAIT str; slot resolve: sl+0x9a8 (fo 0xb35e8) holds reloc 0xa9994 -> fo 0xaa880.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The online-session context object is G2 = getRoot(fn 0x14ad10) + 0xa3ac, shared by all six handlers and the overlay; key fields: +0x38 protocol state (7/9/0xd), +0x40 cleared-flag, +0x4c slot index (byte echoed in 04 3e), +0xa0 server-msg buffer, +0x1a0 screen ptr, +0x460 overlay header gate.",
+   "evidence": "Every handler: bl 0x14ad10; add #0xa3ac (0x56c2a,0x573b8,0x56f60,0x581c2, overlay 0x72b42). Field uses cited in per-handler claims.",
+   "confidence": "HIGH"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "0x56d88",
+   "template": "01 3d <16 bytes> <20 bytes> <u32LE> 00",
+   "meaning": "cat1/op1 response-triggered send: slot/phone auth submit (16B + 20B fields built via G->vtable, + a u32 from *(sl+0x16c)+0xc)",
+   "field_notes": "put_u8(1);put_u8(0x3d);put_bytes(buf16,0x10);put_bytes(buf20,0x14);put_u32_le(*(cnt+0xc));put_u8(0);flush. Buffers built from digit-conversion loop + vtable[0x74] formatter."
+  },
+  {
+   "site_fo": "0x56de2",
+   "template": "04 3e <slot:u8>",
+   "meaning": "cat1/op0x3d when G2+0x38==9: request slot save/load; slot byte = *(G2+0x4c)",
+   "field_notes": "put_u8(4);put_u8(0x3e);put_u8(*(G2+0x4c) as s8);flush. Shows '슬롯 정보 요청중입니다'."
+  },
+  {
+   "site_fo": "0x56e20",
+   "template": "1f 00 53 4d 53 20 48 45 52 4f 33",
+   "meaning": "cat1/op0x3d when G2+0x38==7: SMS request; 9-byte literal payload 'SMS HERO3' (fo 0xa962c)",
+   "field_notes": "put_u8(0x1f);put_u8(0);put_bytes('SMS HERO3',9);flush. Shows 'SMS 요청중입니다'."
+  },
+  {
+   "site_fo": "0x56e66",
+   "template": "01 3e",
+   "meaning": "cat1/op0x3d default state: notice/continue; clears *(G2+0x40)=0 first",
+   "field_notes": "str #0,[G2+0x40];put_u8(1);put_u8(0x3e);flush. Shows '공지사항 요청중입니다'."
+  },
+  {
+   "site_fo": "0x56fb0",
+   "template": "05 3d 00",
+   "meaning": "cat4/op0x3d: warehouse/slot save ack; then local persist to ./Hero3SlotSave via writer 0x1951b0",
+   "field_notes": "put_u8(5);put_u8(0x3d);put_u8(0);flush."
+  }
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/dispatch.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat1_rest.txt",
+  "d:/tmp/wie_app/tools_re/dis/callthunk.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat0.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat5.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat64.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat4.txt",
+  "d:/tmp/wie_app/tools_re/dis/waitdraw.txt",
+  "d:/tmp/wie_app/tools_re/dis/waithdr.txt",
+  "d:/tmp/wie_app/tools_re/dis/kr_clean.txt",
+  "d:/tmp/wie_app/tools_re/resolve_slots.py",
+  "d:/tmp/wie_app/tools_re/find_wait.py",
+  "d:/tmp/wie_app/tools_re/find_waitref.py",
+  "d:/tmp/wie_app/tools_re/find_slotldr.py",
+  "d:/tmp/wie_app/tools_re/decode_clean.py"
+ ],
+ "open_questions": [
+  "Confirm G2+0x40 is THE 'waiting for server response' flag by finding its SETTER at a client send-site (before flush). Currently only the clear at fo 0x56e58 is proven; a matching set-to-1 near a request send would upgrade it from MED to HIGH.",
+  "Decode the full cat==5 op jump-table (0x40 entries at jt=sl-0x94b4, fo of table ~ 0xb2c40-0x94b4 = 0xa978c): map each (op-3) case fo to its warehouse/cash-shop/orb/money reply handler and the exact response body layout each parses. This is the bulk of the network-warehouse/shop protocol still unmapped.",
+  "Resolve the concrete body of vtable[0x58] (rx-node release) and vtable[0x74]/[0x54]/[4] on G=*(sl+0x18): the object at ~fo 0xc338c is runtime-constructed, so the vtable pointer is likely set in a constructor — find the constructor to dump the vtable and confirm slot 0x58 = ring release.",
+  "Determine the exact semantics of G2+0x38 state enum values (7=SMS-pending, 9=slot-pending, 0xd=notice-screen?) by tracing which client request sets each state before the reply arrives.",
+  "Clarify the 4-byte gap at p+4 (node header word between the u16 len/cursor and cat@p+8): whether it is total-len, a timestamp, or a ring backlink written by the rx pump at fo 0x7e63c."
+ ]
+}

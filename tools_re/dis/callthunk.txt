@@ -1,0 +1,18 @@
+0a429c  bx       r2 
+0a429e  mov      r8, r8 
+0a42a0  bx       r3 
+0a42a2  mov      r8, r8 
+0a42a4  bx       r4 
+0a42a6  mov      r8, r8 
+0a42a8  bx       r5 
+0a42aa  mov      r8, r8 
+0a42ac  bx       r6 
+0a42ae  mov      r8, r8 
+0a42b0  bx       r7 
+0a42b2  mov      r8, r8 
+0a42b4  bx       r8 
+0a42b6  mov      r8, r8 
+0a42b8  bx       sb 
+0a42ba  mov      r8, r8 
+0a42bc  bx       sl 
+0a42be  mov      r8, r8 

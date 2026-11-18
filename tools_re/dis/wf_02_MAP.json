@@ -1,0 +1,163 @@
+{
+ "region": "network-warehouse REQUEST builders (창고 입출고/조회) — cat 0x05 channel",
+ "summary": "## 영웅서기3 네트워크 창고 프로토콜 (cat 0x05) — request grammar\n\nAll warehouse requests share the verified framing `[u32 LE total_len (incl. 4B header)] [payload]`, payload begins `cat=0x05` then `op`. Every builder writes via the known TX serializers and ends with flush `0x17e890` (fo 0x7e890). I discovered ONE new serializer:\n\n**`0x17e300` (fo 0x7e300) = put_u32x2** — takes (r0,r1), memcpy's 8 bytes `[r0 LE][r1 LE]` into buf+0xc+len, len+=8. Confirmed by disasm (str r0,[sp]; str r1,[sp+4]; memcpy #8; ldrh len; +8). Used to send an item's 2-u32 key for download/discard.\n\n### Op-code map (cat 0x05), each bound to its post-send Korean status string (deterministically resolved via reloc `str_fo = *(sl+V) + 0xeec`):\n| op | payload | UI action (status string) | builder fn (send fo) |\n|----|---------|---------------------------|----------------------|\n| **0x14** | *(none)* | \"돈 요청중입니다\" = request gold balance | 0x57568 (0x575dc) |\n| **0x3f** | 12B: `00 00 00 00`,u32@ctx+0x308,`00 00 00 00` | \"캐시 아이템 정보 요청중입니다\" = cash-item info query | 0x575f8 (0x576b8) |\n| **0x03** | 20B item record + slot(u8) | *(item transfer, no status str)* | 0x575f8 (0x57968) |\n| **0x3d** | slot(u8, ctx+0x1a5) | \"싱글 창고로 아이템을 내렸습니다\"/\"아이템이 삭제 되었습니다\" = withdraw item to single-wh / delete | 0x57c1a (0x57e80, 0x57ec6); also 0x575f8 (0x579f8) |\n| **0x40** | u32 A, u32 B, u32 C, flag(u8) | \"싱글 창고로 돈을 내렸습니다\" = withdraw GOLD to single-wh | 0x57c1a (0x5801a) |\n| **0x41** | 20B item record + slot(u8) | \"아이템 올리기 중입니다\" = UPLOAD item to network (validated) | 0x6327e→0x63362→0x63584 (0x6367e) |\n| **0x05** | u32 key0, u32 key1 | \"아이템 버리기 중입니다\" = DISCARD item | 0x636c2 (0x63762) |\n| **0x04** | u32 key0, u32 key1 | \"아이템 내리기 중입니다\" = DOWNLOAD item network→single | 0x636c2 (0x63984, 0x63ac2) |\n\n### Two-warehouse model (from strings): NETWORK (online) ↔ SINGLE(local)/INVENTORY.\n- **올리기 (upload, local→network)** transmits the FULL 20-byte item record (server doesn't yet have the item): op **0x41** (validated: rejects combine-mat type 0xe/grade>0x1d, recipe 0xf, quest 0x11) and op **0x03**.\n- **내리기 (download, network→local)** & **버리기 (discard)** only reference an existing network item by its 2-u32 key: op **0x04** (item), **0x05** (discard), **0x3d** (slot-based), **0x40** (gold). The two requested strings — \"싱글 창고가 가득찼습니다\" (single-wh full) and \"인벤토리로 내리면 다시 네트워크로 올릴 수 없습니다. 계속 하시겠습니까?\" — are BOTH pre-conditions/confirm-prompts gating **op 0x04** in fn 0x636c2, decisively binding 0x636c2 → item-download feature.\n\n### 20-byte item record (op 0x03 & 0x41, identical assembly in 0x575f8 and 0x63362):\n`[0..3] u32 A (item+0x3bc, key/id)`, `[4..7] u32 B (item+0x3c0)`, `[8]=byte@item+0x3b6`, `[9]=byte@0x3b8`, `[a]=byte@0x3ba`, `[b]=0`, `[c..f]=0xffffffff (network-slot = unassigned marker)`, `[10]=byte@0x3c6`, `[11]=byte@0x3c5`, `[12]=byte@0x3c9`, `[13]=byte@0x3c8`. Grid-indexed by cursor (col=[r7-0x25], row=[r7-0x26]; strides 0x3c4/0x3c).\n\n### Flow: warehouse screen enter → **0x14** (gold) + **0x3f** (cash items) queries → server pushes list (cat 05 responses, parsed at 0x156a40) → user **0x41** upload (sends item) / **0x04** download / **0x05** discard (send 2-u32 key) / **0x3d** slot-commit / **0x40** gold-down. Each send is followed by a \"…중입니다\" busy status until the server reply updates the UI.\n\nNote: fns 0x57394 (jump-table dispatcher on arg0-3), 0x57a80, 0x57ac6 are non-sending cases of the network-warehouse UI state-machine (no serializer/flush calls — verified by grep); they prepare local structs/cursors that the send-cases consume. 0x6327e is the memset prologue of the 0x41 upload builder.",
+ "claims": [
+  {
+   "statement": "0x17e300 (fo 0x7e300) is put_u32x2: appends 8 bytes [r0 LE][r1 LE] to the TX buffer and advances len by 8. Used to send an item's two-u32 identity key for download/discard ops.",
+   "evidence": "fo 0x7e300: str r0,[sp]; str r1,[sp,#4]; r4=txbuf; ldrsh r0,[r4,#8](len); r0=r4+len+0xc; movs r2,#8; bl 0x19f624(memcpy); ldrh r3,[r4,#8]; adds r3,#8; strh r3,[r4,#8]. Same buf+0xc/len@buf+8 convention as put_bytes 0x7e184.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x14 = gold/money balance request (no payload args). cat=05, op=0x14, then flush.",
+   "evidence": "fn 0x57568 @0x575d0: movs r0,#5; bl 0x17e150; movs r0,#0x14; bl 0x17e150; bl 0x17e890(flush @0x575dc). Post-send @0x575e0 loads *(sl+0x4a8) -> str@0xa968c '돈 요청중입니다.' passed to 0x175b98.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x3f (12-byte form) = cash-item info request. Payload = 00 00 00 00 | u32@(ctx+0x308) | 00 00 00 00.",
+   "evidence": "fn 0x575f8 @0x576a0: put_u8(5); put_u8(0x3f); put_bytes(r7-0x20,#0xc); flush@0x576b8. Struct built @0x5765a-0x5769e: [4]=*(ctx+0xc2*4=0x308), others 0. Post @0x576bc *(sl+0x4ac)->str@0xa96a0 '캐시 아이템 정보 요청중입니다.'",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x03 = item upload/transfer: cat=05, op=03, 20-byte serialized inventory item record, then 1 slot byte (ctx+0x1a5).",
+   "evidence": "fn 0x575f8 @0x57938: put_u8(5); put_u8(3); put_bytes(r7-0x3c,#0x14); then @0x57952 byte=*(ctx+0x1a5) sxt; put_u8; flush@0x57968. Record assembled @0x57726-0x578f8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x3d = withdraw/commit by network slot: cat=05, op=3d, 1 slot byte from ctx+0x1a5. Bound to '싱글 창고로 아이템을 내렸습니다'(item withdrawn to single-wh) and '아이템이 삭제 되었습니다'(item deleted).",
+   "evidence": "fn 0x57c1a: @0x57e5e put_u8(5);put_u8(0x3d);put_u8(*(ctx+0x1a5));flush@0x57e80 then *(sl+0x4b4)->str@0xa96e8 '싱글 창고로 아이템을 내렸습니다. 업데이트 중입니다.' ; @0x57ea4 same, flush@0x57ec6 then *(sl+0x4b8)->str@0xa971c '아이템이 삭제 되었습니다. 업데이트 중입니다.' Also 0x575f8@0x579f8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x40 = withdraw GOLD to single warehouse: cat=05, op=40, put_u32x2(rec[0],rec[4]), put_u32_le(rec[0xc]), put_u8(flag). rec = ctx + slot*0x14 + 0x320.",
+   "evidence": "fn 0x57c1a @0x57fb4: put_u8(5);put_u8(0x40); r0=rec[0],r1=rec[4] via base+slot*0x14+0xc8*4(=0x320); bl 0x17e300(put_u32x2); then rec+0xcb*4(=0x32c) -> put_u32_le 0x17e1c4 @0x58008; byte *([r7-0x10]+0xa)->put_u8; flush@0x5801a. Post-string @0x57ecx path *(sl+0x4bc)->str@0xa974c '싱글 창고로 돈을 내렸습니다.'",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x41 = UPLOAD item to network warehouse (올리기): cat=05, op=41, 20-byte item record, slot byte (ctx+0x1a5). Pre-send validation rejects combine-material (type byte@0xe==0xe & grade@0x9>0x1d), recipe (0xf), quest (0x11).",
+   "evidence": "builder 0x6327e(memset r7-0x2c,#0x14)->0x63362(fill record, same 0x3c4/0x3c grid & 0xee<<2/0xf1<<2 offsets as 0x575f8)->0x63584: type checks @0x635xx load *(sl+0x7d4/0x7d8/0x7dc)= '해당 조합 재료는/조합 래시피 아이템은/퀘스트 아이템은 올릴 수 없습니다'; @0x63650 put_u8(5);put_u8(0x41);put_bytes(r7-0x2c,#0x14);put_u8(*(ctx+0x1a5));flush@0x6367e; post *(sl+0x7e0)->str@0xa9f7c '아이템 올리기 중입니다.'",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x05 = DISCARD item (버리기): cat=05, op=05, put_u32x2(key0,key1). rec = ctx + slot*0x14 + 0x1b8.",
+   "evidence": "fn 0x636c2 @0x63730: put_u8(5);put_u8(5); r0=rec[0],r1=rec[4] via slot*0x14+0xdc*2(=0x1b8); bl 0x17e300(put_u32x2); flush@0x63762; post *(sl+0x7e4)->str@0xa9f94 '아이템 버리기 중입니다.'",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x04 = DOWNLOAD item network->single warehouse (내리기): cat=05, op=04, put_u32x2(key0,key1). rec = ctx + slot*0x14 + 0x1b8. Two branches (stackable/non-stackable) emit identical grammar.",
+   "evidence": "fn 0x636c2 @0x63950: put_u8(5);put_u8(4);put_u32x2(rec[0],rec[4] @slot*0x14+0x1b8);flush@0x63984; and @0x63a8e same, flush@0x63ac2. Both post *(sl+0x7ec)->str@0xa9fcc '아이템 내리기 중입니다.'",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "fn 0x636c2 owns the item-download feature: the two requested strings '싱글 창고가 가득찼습니다'(str@0xa9fe4, *(sl+0x7f0)) and '인벤토리로 내리면 다시 네트워크로 올릴 수 없습니다. 계속 하시겠습니까?'(str@0xaa000, *(sl+0x7f4)) are pre-conditions/confirm-prompts in this fn gating op 0x04.",
+   "evidence": "resolve of sl-slots 0x7f0/0x7f4 (fo 0xb3430/0xb3434) via *(sl+V)+0xeec; both literals referenced inside 0x636c2 range around the 05 04 emit blocks (full check @0x63a7a strb+0x98=1; irreversible-confirm on the 내리기 path).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 20-byte upload record (op 0x03 & 0x41) is: u32 A(item+0x3bc), u32 B(item+0x3c0), then attribute bytes @0x3b6/0x3b8/0x3ba, 0x00, u32 0xffffffff (unassigned network-slot marker), bytes @0x3c6/0x3c5/0x3c9/0x3c8. First u32 = item key/id.",
+   "evidence": "fn 0x575f8 @0x5775e-0x578f8 and 0x63362 @0x63362-0x633d8: str rec[0x3bc],[0x3c0] to dest[0],[4]; ldrh->strb chain to dest[8..a]; dest[b]=0; movs #1;rsbs->str -1 to dest[c]; ldrb chain to dest[10..13].",
+   "confidence": "MED"
+  },
+  {
+   "statement": "slot byte source ctx+0x1a5 is the selected warehouse slot cursor (0-based), clamped against ctx+0x1a4.",
+   "evidence": "fn 0x57394 @0x574ac-0x574e4: ldrsb *(ctx+0xd2*2=0x1a4) vs ldrsb *(ctx+0x1a5); cmp; bge; conditional copy — cursor clamp/advance pattern; same 0x1a5 byte is the trailing put_u8 in 0x03/0x3d/0x41.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "fns 0x57394, 0x57a80, 0x57ac6 are non-sending cases/continuations of the network-warehouse UI dispatcher (jump-table on arg0-3); 0x6327e is the memset prologue of the 0x41 upload builder — none call a serializer or flush directly.",
+   "evidence": "grep of wh_57a80.txt/wh_57ac6.txt/wh_6327e.txt for 0x17e150/0x17e184/0x17e1c4/0x17e300/0x17e890 = 0 hits; 0x57394 @0x573ee jump-table 'lsls r2,r3,#2; ldr [sl+0xffff6b4c]; mov pc,r3'; 0x6327e @0x6329c 'memset(r7-0x2c,0,0x14)'.",
+   "confidence": "HIGH"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "0x575dc",
+   "template": "05 14",
+   "meaning": "Request current gold/money balance held in warehouse (돈 요청). No arguments.",
+   "field_notes": "cat=05 op=0x14. Two put_u8 then flush. Server replies with gold (cat 05 op 0x14). Post-send UI: '돈 요청중입니다.'"
+  },
+  {
+   "site_fo": "0x576b8",
+   "template": "05 3f 00 00 00 00 ?? ?? ?? ?? 00 00 00 00",
+   "meaning": "Cash-shop item info/list request (캐시 아이템 정보 요청). 12-byte fixed struct.",
+   "field_notes": "Bytes[0..3]=0, bytes[4..7]=u32 LE *(warehouse_ctx+0x308) (runtime; likely char/session or page cursor), bytes[8..11]=0. Sent via put_bytes(#0xc). Post-send: '캐시 아이템 정보 요청중입니다.' NOTE distinct from the other 05 3f site 0x6483c (05 3f <b>) outside this region."
+  },
+  {
+   "site_fo": "0x57968",
+   "template": "05 03 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ff ff ff ff ?? ?? ?? ?? ??",
+   "meaning": "Item transfer/upload carrying full 20-byte inventory item record + trailing slot byte.",
+   "field_notes": "After 05 03: 20B record = [u32 A item-id][u32 B][b8][b9][ba][00][u32 0xffffffff = network-slot unassigned][b][b][b][b], then 1 slot byte = *(ctx+0x1a5). Runtime bytes marked ??; the 00 at [11] and ffffffff at [12..15] are constants. No post-send status string (flow continues after 05 3f cash query)."
+  },
+  {
+   "site_fo": "0x579f8",
+   "template": "05 3d ??",
+   "meaning": "Slot-based commit/withdraw (network slot index).",
+   "field_notes": "cat=05 op=0x3d; 1 byte = *(ctx+0x1a5) selected slot. Reached in 0x575f8 after a state helper (0x1a42a4)."
+  },
+  {
+   "site_fo": "0x57e80",
+   "template": "05 3d ??",
+   "meaning": "Withdraw item from network to single warehouse (아이템 내림). op 0x3d + slot.",
+   "field_notes": "1 byte = *(ctx+0x1a5). Post-send: '싱글 창고로 아이템을 내렸습니다. 업데이트 중입니다.'"
+  },
+  {
+   "site_fo": "0x57ec6",
+   "template": "05 3d ??",
+   "meaning": "Delete/consume network warehouse item. op 0x3d + slot (same grammar, different UI context).",
+   "field_notes": "1 byte = *(ctx+0x1a5). Post-send: '아이템이 삭제 되었습니다. 업데이트 중입니다.'"
+  },
+  {
+   "site_fo": "0x5801a",
+   "template": "05 40 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??",
+   "meaning": "Withdraw GOLD from network to single warehouse (돈 내림).",
+   "field_notes": "cat=05 op=0x40, then put_u32x2 -> u32 A=rec[0], u32 B=rec[4] (both LE); then put_u32_le u32 C=rec[0xc]; then 1 flag byte = *([UIsub]+0xa). rec = ctx+slot*0x14+0x320. A/B/C likely encode gold amount + book-keeping (semantics MED). Post-send: '싱글 창고로 돈을 내렸습니다.'"
+  },
+  {
+   "site_fo": "0x6367e",
+   "template": "05 41 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ff ff ff ff ?? ?? ?? ?? ??",
+   "meaning": "UPLOAD item to network warehouse (아이템 올리기), full 20-byte record + slot byte, sent only after type validation.",
+   "field_notes": "Same 20B record layout as op 0x03 (assembled in 0x6327e->0x63362), then slot byte *(ctx+0x1a5). Client rejects before send: combine-material (type@[8]==0xe & grade@[9]>0x1d), recipe (==0xf), quest (==0x11). Post-send: '아이템 올리기 중입니다.'"
+  },
+  {
+   "site_fo": "0x63762",
+   "template": "05 05 ?? ?? ?? ?? ?? ?? ?? ??",
+   "meaning": "DISCARD network item (아이템 버리기). References item by 2-u32 key only.",
+   "field_notes": "put_u32x2(key0=rec[0], key1=rec[4]) LE, 8 bytes. rec = ctx+slot*0x14+0x1b8. Post-send: '아이템 버리기 중입니다.'"
+  },
+  {
+   "site_fo": "0x63984",
+   "template": "05 04 ?? ?? ?? ?? ?? ?? ?? ??",
+   "meaning": "DOWNLOAD item network->single warehouse (아이템 내리기). References item by 2-u32 key.",
+   "field_notes": "put_u32x2(key0=rec[0], key1=rec[4]) LE. rec = ctx+slot*0x14+0x1b8. Gated by '싱글 창고가 가득찼습니다'(full check) and confirm '인벤토리로 내리면 다시 네트워크로 올릴 수 없습니다'. Post-send: '아이템 내리기 중입니다.'"
+  },
+  {
+   "site_fo": "0x63ac2",
+   "template": "05 04 ?? ?? ?? ?? ?? ?? ?? ??",
+   "meaning": "DOWNLOAD item (내리기) — alternate branch (non-stackable / count<=0xc path). Identical grammar to 0x63984.",
+   "field_notes": "put_u32x2(rec[0],rec[4]) LE, rec = ctx+slot*0x14+0x1b8. Post-send: '아이템 내리기 중입니다.'"
+  }
+ ],
+ "open_questions": [
+  "Exact meaning of the two per-item u32 keys (rec[0] item+0x3bc, rec[4] item+0x3c0). rec[0] is almost certainly the item id/unique-instance id; rec[4] is a secondary field (count, seq, or server slot). Needs a live capture or item-model RE to confirm which is which.",
+  "op 0x40 (gold withdraw) sends THREE u32 (A,B,C) + a flag byte; which is the gold amount vs. session/checksum is unproven. A save-diff or live capture would disambiguate.",
+  "Server RESPONSE grammar for cat 0x05 ops (0x03/0x04/0x05/0x14/0x3d/0x3f/0x40/0x41) is not covered here — the response dispatcher at 0x156a40 must be disassembled to learn reply layouts (list rows, gold value, ack/error codes) needed for a working private server.",
+  "ctx+0x308 field inside the 05 3f (cash-item) 12-byte struct is a runtime u32 of unknown meaning (page cursor / char id / session). Only the byte layout is proven.",
+  "Two upload paths exist: op 0x41 (validated, fn 0x63584) and op 0x03 (fn 0x575f8, in the cash-item flow). Whether 0x03 is 'upload to a different warehouse type' or 'purchase cash item carrying the item record' is not decisively bound (0x03 has no post-send status string). The single string '캐시템 구입중입니다' (from grounded facts) may attach to 0x03 but I did not prove its slot in-region.",
+  "The jump-table in fn 0x57394 (base sl+0xffff6b4c, index (arg0-3)*4, bound 0x3f) was not fully enumerated, so which UI event (list-refresh / cursor-move / confirm) selects each of 05 14 / 05 3f / 05 03 / 05 3d within that dispatcher is only partially traced."
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/wh_57394.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_57568.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_575f8.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_57a80.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_57ac6.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_57c1a.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_6327e.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_63362.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_63584.txt",
+  "d:/tmp/wie_app/tools_re/dis/wh_636c2.txt",
+  "d:/tmp/wie_app/tools_re/dis/put_7e300.txt",
+  "d:/tmp/wie_app/tools_re/dis/slots_clean.txt",
+  "d:/tmp/wie_app/tools_re/dis/resolve2.py",
+  "d:/tmp/wie_app/tools_re/dis/resolve_slots.py"
+ ]
+}

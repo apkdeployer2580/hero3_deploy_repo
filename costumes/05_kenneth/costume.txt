@@ -1,0 +1,25 @@
+# 의상 5 — 하드코어 엔딩 보상. 169차: 게임 속 케네스(붉은 뿔 가면 · 연보라 판금 갑옷)를 주인공 몸에 맞춰 프레임마다 새로 그렸다.
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/kenneth.py 가 그린다(재채색 없음).
+set            = 케네스
+acquire        = clear.hard
+helmet         = 케네스의 가면
+helmet.desc    = 케네스가 쓰던 붉은 뿔 가면
+armor          = 케네스의 갑옷
+armor.desc     = 연보라빛 강철 판금 갑옷
+gloves         = 케네스의 건틀릿
+gloves.desc    = 붉은 손등의 강철 건틀릿
+shoes          = 케네스의 각반
+shoes.desc     = 강철 각반을 덧댄 바지
+weapon         = 케네스의 무기
+weapon.desc    = 케네스가 쓰던 무기
+weapon.spear   = 케네스의 창
+weapon.sword   = 케네스의 장검
+weapon.knife   = 케네스의 손톱
+weapon.gun     = 케네스의 단총
+weapon.rifle   = 케네스의 대포
+weapon.dark    = 케네스의 흑마법진
+weapon.holy    = 케네스의 은마법진
+shield         = 케네스의 방패
+shield.desc    = 진홍 문장의 강철 방패

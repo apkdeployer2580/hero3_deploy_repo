@@ -1,0 +1,64 @@
+057568  bl       #0x19f624 
+05756c  adds     r1, r7, #0 
+05756e  subs     r1, #0xc 
+057570  adds     r3, r7, #0 
+057572  subs     r3, #0x12 
+057574  ldrh     r3, [r3] 
+057576  lsls     r3, r3, #0x10 
+057578  asrs     r2, r3, #0x10 
+05757a  movs     r3, #0x14 
+05757c  muls     r2, r3, r2 
+05757e  ldr      r3, [r1] 
+057580  adds     r3, r2, r3 
+057582  movs     r2, #0xdc 
+057584  lsls     r2, r2, #1 
+057586  adds     r0, r3, r2 
+057588  adds     r4, r7, #0 
+05758a  subs     r4, #0x10 
+05758c  adds     r3, r7, #0 
+05758e  subs     r3, #0x12 
+057590  ldrh     r3, [r3] 
+057592  lsls     r3, r3, #0x10 
+057594  asrs     r1, r3, #0x10 
+057596  adds     r3, r7, #0 
+057598  subs     r3, #0x12 
+05759a  ldrh     r3, [r3] 
+05759c  lsls     r3, r3, #0x10 
+05759e  asrs     r2, r3, #0x10 
+0575a0  movs     r3, #0x14 
+0575a2  muls     r3, r2, r3 
+0575a4  adds     r2, r1, r3 
+0575a6  ldr      r3, [r4] 
+0575a8  adds     r3, r2, r3 
+0575aa  adds     r3, #0xf 
+0575ac  adds     r1, r3, #0 
+0575ae  movs     r2, #0x14 
+0575b0  bl       #0x19f624 
+0575b4  adds     r2, r7, #0 
+0575b6  subs     r2, #0x12 
+0575b8  adds     r3, r7, #0 
+0575ba  subs     r3, #0x12 
+0575bc  ldrh     r3, [r3] 
+0575be  adds     r3, #1 
+0575c0  strh     r3, [r2] 
+0575c2  b        #0x1574ee 
+0575c4  adds     r3, r7, #0 
+0575c6  subs     r3, #0xc 
+0575c8  ldr      r3, [r3] 
+0575ca  ldr      r3, [r3, #0x38] 
+0575cc  cmp      r3, #3 
+0575ce  beq      #0x1575f6 
+0575d0  movs     r0, #5 
+0575d2  bl       #0x17e150 
+0575d6  movs     r0, #0x14 
+0575d8  bl       #0x17e150 
+0575dc  bl       #0x17e890 
+0575e0  ldr      r3, [pc, #0x3a4]   ; lit@0x57988 = 0x000004a8
+0575e2  add      r3, sl 
+0575e4  ldr      r3, [r3] 
+0575e6  adds     r0, r3, #0 
+0575e8  movs     r1, #3 
+0575ea  movs     r2, #1 
+0575ec  movs     r3, #0 
+0575ee  bl       #0x175b98 
+0575f2  bl       #0x158172 

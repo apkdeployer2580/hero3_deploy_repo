@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="영웅서기3 개정판 v{{VER}} 신규 아이템 {{N}}종을 세트별로 묶은 목록. 아이템마다 효과, 그리고 드랍표.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="영웅서기3 신규 아이템">
+<meta property="og:description" content="개정판 v{{VER}} · 신규 아이템 {{N}}종 · 효과와 드랍표">
+<title>영웅서기3 신규 아이템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#E7E2D6; --panel:#FBF8F1; --line:#C9C1AC; --line-soft:#DED7C6;
+  --ink:#1B1813; --ink-2:#565043; --ink-3:#847C69; --red:#C80F0F; --link:#0A6E9E;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#100F0C; --panel:#1B1915; --line:#3A342A; --line-soft:#2C281F;
+    --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666; --red:#FF5252; --link:#2EBCFF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100F0C; --panel:#1B1915; --line:#3A342A; --line-soft:#2C281F;
+  --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666; --red:#FF5252; --link:#2EBCFF;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;font-size:15px;line-height:1.6;
+  word-break:keep-all;-webkit-font-smoothing:antialiased}
+.page{max-width:900px;margin:0 auto;padding-inline:16px;padding-block:28px 64px}
+h1{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;font-size:clamp(30px,6vw,42px);margin:0 0 4px}
+.meta{margin:0;color:var(--ink-2)}
+.meta a{color:var(--link)}
+h2{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;font-size:24px;margin:34px 0 8px;
+  padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2 small{font-family:"IBM Plex Sans KR",system-ui,sans-serif;font-size:13px;color:var(--ink-3);margin-left:6px}
+.setfx{margin:0 0 8px;color:var(--ink-2)}
+.setfx b{color:var(--ink)}
+.tbl{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;vertical-align:top;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+tr:last-child td{border-bottom:none}
+th{font-size:13px;color:var(--ink-3);font-weight:600;white-space:nowrap}
+.drops td:first-child{white-space:nowrap;font-weight:600}
+.drops{min-width:560px}
+.note{margin:8px 0 0;color:var(--ink-3);font-size:13px}
+.items td.nm{white-space:nowrap}
+.items td.nm b{color:var(--red);font-weight:600}
+.items td.nm span{display:block;font-size:12.5px;color:var(--ink-3)}
+.items td.fx{min-width:0}
+.items td.mk{font-size:13px;color:var(--ink-2)}
+.tag{font-size:11px;border:1px solid var(--ink-3);color:var(--ink-3);padding:0 4px;margin-left:4px;font-weight:400}
+@media (max-width:640px){
+  .items thead{display:none}
+  .items tr{display:block;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+  .items tr:last-child{border-bottom:none}
+  .items td{display:block;padding:0;border:none}
+  .items td.fx{margin-top:2px}
+  .items td.mk{margin-top:2px}
+  .items td.mk::before{content:"조합 · ";color:var(--ink-3)}
+  .drops{min-width:0}
+  .drops thead{display:none}
+  .drops tr{display:block;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+  .drops tr:last-child{border-bottom:none}
+  .drops td{display:block;padding:0;border:none}
+  .drops td[data-l]::before{content:attr(data-l) " · ";color:var(--ink-3)}
+}
+</style>
+</head>
+<body>
+<main class="page">
+{{BODY}}
+</main>
+</body>
+</html>

@@ -1,0 +1,60 @@
+056f3c  push     {r4, r7, lr} 
+056f3e  mov      r7, sl 
+056f40  push     {r7} 
+056f42  mov      r7, sp 
+056f44  sub      sp, #0x24 
+056f46  ldr      r2, [pc, #0x314]   ; lit@0x5725c = 0x0005bcf2
+056f48  mov      sl, r2 
+056f4a  add      sl, pc 
+056f4c  subs     r3, r7, #4 
+056f4e  str      r0, [r3] 
+056f50  adds     r3, r7, #0 
+056f52  subs     r3, #8 
+056f54  str      r1, [r3] 
+056f56  adds     r4, r7, #0 
+056f58  subs     r4, #0xc 
+056f5a  bl       #0x14ad10 
+056f5e  adds     r3, r0, #0 
+056f60  ldr      r2, [pc, #0x2fc]   ; lit@0x57260 = 0x0000a3ac
+056f62  adds     r3, r3, r2 
+056f64  str      r3, [r4] 
+056f66  adds     r2, r7, #0 
+056f68  subs     r2, #0x10 
+056f6a  adds     r3, r7, #0 
+056f6c  subs     r3, #8 
+056f6e  ldr      r3, [r3] 
+056f70  ldr      r3, [r3] 
+056f72  adds     r3, #8 
+056f74  str      r3, [r2] 
+056f76  subs     r3, r7, #4 
+056f78  ldr      r3, [r3] 
+056f7a  movs     r2, #0x24 
+056f7c  rsbs     r2, r2, #0 
+056f7e  adds     r2, r2, r7 
+056f80  str      r3, [r2] 
+056f82  movs     r3, #0x24 
+056f84  rsbs     r3, r3, #0 
+056f86  adds     r3, r3, r7 
+056f88  ldr      r3, [r3] 
+056f8a  cmp      r3, #0x3d 
+056f8c  beq      #0x156f9e 
+056f8e  movs     r2, #0x24 
+056f90  rsbs     r2, r2, #0 
+056f92  adds     r2, r2, r7 
+056f94  ldr      r2, [r2] 
+056f96  cmp      r2, #0x3e 
+056f98  bne      #0x156f9c 
+056f9a  b        #0x15709a 
+056f9c  b        #0x157252 
+056f9e  movs     r0, #5 
+056fa0  bl       #0x17e150 
+056fa4  movs     r0, #0x3d 
+056fa6  bl       #0x17e150 
+056faa  movs     r0, #0 
+056fac  bl       #0x17e150 
+056fb0  bl       #0x17e890 
+056fb4  adds     r4, r7, #0 
+056fb6  subs     r4, #0x14 
+056fb8  bl       #0x14ad10 
+056fbc  adds     r3, r0, #0 
+056fbe  ldr      r2, [pc, #0x2a4]   ; lit@0x57264 = 0x0000aca8

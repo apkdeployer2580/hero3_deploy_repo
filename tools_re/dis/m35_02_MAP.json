@@ -1,0 +1,84 @@
+{
+ "region": "response-body reader / message-read primitives (RX getter foundation)",
+ "summary": "## Response-body reader model (Hero3 client.bin)\n\n**There is NO cursor-advancing getter cluster** analogous to the TX serializers (`put_u8@0x17e150`). The RX side parses reply bodies by **inline, direct, fixed-offset indexing** off the message struct. This is the foundation every other feature offset stands on.\n\n### Message struct `M = *node + 8` (byte layout, all offsets from M)\n| off | size | field | how read | ground (fo, guest) |\n|---|---|---|---|---|\n| +0x0 | u16 | total_len (bytes incl 4B hdr) | `ldrh [M]`; guard `>5` else discard | 0x56a88 (g 0x156a88) |\n| +0x2 | u16 | read-cursor — **zeroed on entry, NEVER read** | `strh #0,[M,#2]` once | 0x56a80 |\n| +0x4..7 | 4B | raw wire length header | — | model |\n| +0x8 | u8 | **cat = payload[0]** | `ldrb [M,#8]` | 0x56abe |\n| +0x9 | u8 | **op = payload[1]** | `ldrb [M,#9]` | 0x56ad0 |\n| +0xa+i | u8 | **body[i] = payload[2+i]** | `ldrb [M,#(0xa+i)]` / memcpy src | see below |\n\n### THE INVARIANT (HIGH, triple-confirmed)\n`body byte i = payload[2+i] = M[0xa + i]`, where `M = *node + 8`.\nFor record arrays: field at `M + 0xa + header_len + stride*i + field_off`.\n\n### RX primitives (the \"getters\", such as they are)\n- **u8 scalar** = `ldrb rX,[M,#(0xa+i)]` (sign-extended via `lsls#0x18;asrs#0x18` when signed). Inlined — no subroutine.\n- **multi-byte / record / string field** = `memcpy(r0=dest, r1=M+off, r2=n)` via **fo 0x9f624 (guest 0x19f624)** — a std alignment-aware ARM-veneer memcpy (`bx pc`→ARM at 0x19f628), **NO byteswap** (confirmed by ARM-mode disasm). Related consumers of body-derived buffers: `0x1951b0` (save writer / 0x10B copy), `0x1960bc` (save serializer), `0x1a42a4` (sprintf-like used to format body strings).\n- **u16 field** = 2-byte `memcpy` into aligned storage then `ldrh` → **LITTLE-ENDIAN** (no swap in memcpy; matches confirmed LE u32 framing). HIGH.\n\n### Endianness verdict: LITTLE-ENDIAN throughout (HIGH)\nFraming u32 = LE (M3 confirmed); body u16 = memcpy+ldrh = host LE; memcpy 0x19f624 does no swap.\n\n### Why \"no cursor getter\" is proven, not assumed\nRaw-encoding scan of the entire 735760-byte binary for `ldrh/strh rX,[rY,#2]` (0x8840-0x887f / 0x8040-0x807f): only 4 hits inside the net region — dispatcher zero (0x156a80), a cat4 write to a char-struct field +2 (0x157012), and two cat5 reads (0x1577a0/0x15780c) that index a local ITEM TABLE (`base + idxA*0x3c4 + idxB*0x3c + 0x3b4`, then `ldrh[..,#2]`), NOT the node. No `ldrh[M,#2]`+`strh[M,#2]` advance pair exists anywhere. The zeroed cursor is vestigial in the decoded handlers.\n\n### Server-author takeaway\nEmit bodies as flat LE structs: `[cat][op][body...]`. The client reads each field at a hard-coded body offset (and record stride) — there is no length-prefix/cursor negotiation. For the cat5 warehouse list, keep record count N ≤ 16 (client pre-memsets 16 one-byte + 16×20-byte slots; it does NOT clamp N → N>16 overreads its arrays).",
+ "reply_formats": [
+  {
+   "cat_op": "cat=5 op=3 (warehouse/economy item list; handler g 0x157394, case g 0x157400-0x1575c2)",
+   "layout": "body[0] u8 @M+0xa -> G[0x34a] (flag); body[1] u8 @M+0xb -> G[0x1a4] (flag/count); body[2..3] u16 LE @M+0xc -> G[0x1a6] = record count N; then N records, stride 21B: rec i field0 = u8 @M+(0xe+21*i) -> G.byteArr[0x1a8][i]; field1 = 20B @M+(0xf+21*i) -> G.blob[0x1b8][i]. All reads via memcpy(0x19f624). N must be <=16 (arrays pre-memset 0x10 + 0x140).",
+   "effect": "populates the warehouse/inventory slot arrays (up to 16 slots): 1-byte type/flag + 20-byte item blob per slot; drives the warehouse list UI",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=4 op=0x3d (recovery result; handler g 0x156f3c, case g 0x156fd0-0x157098)",
+   "layout": "body[0] u8 @M+0xa = target/slot index, clamped to <=8 (ldrb; cmp#8;bls); body[1] u8 @M+0xb = status flag (0 => pending/fail branch g 0x156fe6; !=0 => success branch g 0x15707c); body[3..] = null-term EUC-KR string @M+0xd, passed as sprintf arg via 0x1a42a4 (recovered item/char name). Read direct via ldrb + in-place string.",
+   "effect": "applies a character/item recovery to the indicated slot; success flag gates apply-vs-error; name string shown in the confirmation message and written to save (0x1951b0/0x1960bc)",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=1 op=0x3e (login/server notice text; handler g 0x156bf8, case g 0x156e6c-0x156ef6)",
+   "layout": "body = raw EUC-KR text string read IN PLACE from the frame buffer B=*node (not field-structured). Freed/re-allocated text-box obj at G[0x1a0] (0x14B), then 0x15b10c(dest=box, src=node, 0xc, -1, width=0x99, lines=9) word-wraps the body string into a notice box (calls text-measure 0x13f3f8/0x13f504).",
+   "effect": "displays a server text/notice popup; body is a single word-wrapped string, no numeric fields",
+   "confidence": "HIGH"
+  }
+ ],
+ "claims": [
+  {
+   "statement": "Response body byte i is read from M[0xa+i] = payload[2+i], where M = *node+8; body[0] is at M+0xa, immediately after cat(M+8) and op(M+9).",
+   "evidence": "Dispatcher reads cat via `ldrb r3,[M,#8]` (fo 0x56abe) and op via `ldrb r3,[M,#9]` (fo 0x56ad0). cat5 op3 memcpys header from M+0xa/M+0xb/M+0xc (fo 0x5745c/0x57478/0x57496). cat4 reads body[0]=`ldrb[M,#0xa]` (fo 0x56fd6), body[1]=`ldrb[M,#0xb]` (fo 0x57030). Triple-independent confirmation.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "There is NO dedicated cursor-advancing getter subroutine (no get_u8/get_u16/get_u32/get_bytes). RX parsing is inline direct indexing; the M+2 read-cursor is zeroed once and never read.",
+   "evidence": "Dispatcher zeroes cursor `strh #0,[M,#2]` at fo 0x56a80. Full-binary raw-encoding scan for ldrh/strh [rY,#2] yields only 4 in-region hits; none form a read+advance pair on M. cat1/cat4/cat5 handlers fully disassembled use fixed offsets or a LOCAL loop counter ([r7-0x12] in cat5), never M+2.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Multi-byte / record / string body fields are copied via memcpy at fo 0x9f624 (guest 0x19f624) = memcpy(r0=dest, r1=src, r2=n), an ARM-veneer routine that performs NO byteswap.",
+   "evidence": "ARM-mode capstone of 0x19f628: `push{r0,lr}; cmp r2,#3; ands ip,r0,#3; ldrb r3,[r1],#1; strb r3,[r0],#1...` = alignment-aware byte/word copy returning dest. Called in cat5 op3 as memcpy(G+off, M+off, n) for header (n=1,1,2) and records (n=1,20).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "u16 body fields are little-endian; the whole wire protocol is little-endian.",
+   "evidence": "cat5 record count = memcpy(G+0x1a6, M+0xc, 2) (fo 0x57496) then read via `ldrh` as a loop bound (fo 0x57504). memcpy 0x19f624 does no swap, ARM ldrh is LE, and the M3-confirmed framing is u32 LE total_len -> field is body[2] | body[3]<<8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Handler call convention: dispatched handler is called with r0=op (payload[1]), r1=node; each handler recomputes M = *node+8 and reads its body from M+0xa onward.",
+   "evidence": "Dispatcher cat5 call site fo 0x56ba6: `r0=[r7-0x10]=op; r1=[r7-4]=node; bl 0x157394`. Handlers prologue: cat5 fo 0x573c2, cat4 fo 0x56f6e, cat1 fo 0x56c16 all compute `[local] = *node+8`.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat5 op=3 warehouse list: header = body[0..3] (u8 flag, u8 flag, u16 LE count N), then N records of stride 21 bytes {u8 field0, 20B field1}, into parallel arrays G[0x1a8] (1B/slot) and G[0x1b8] (20B/slot); 16-slot capacity, N unclamped.",
+   "evidence": "Loop fo 0x57528-0x575c2: dest0=G+0x1a8+i, src0=M+0xe+21*i (n=1); dest1=G+0x1b8+i*20, src1=M+0xf+21*i (n=20). Stride from `r2=i+i*0x14=21i`. memsets at fo 0x57408 (0x10) and 0x57426 (0x140=16*20) => 16 slots.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat4 op=0x3d recovery: body[0] u8 = slot index clamped <=8, body[1] u8 = status flag (0 vs nonzero branch), body[3..] = in-place EUC-KR string used as sprintf arg.",
+   "evidence": "fo 0x56fd6 `ldrb[M,#0xa]; cmp#8; bls` then store-8; fo 0x57030 `ldrb[M,#0xb]; cmp#0; bne 0x15707c`; fo 0x5706a `r3=M; adds#0xd` passed to 0x1a42a4 sprintf.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat1 op=0x3e is a server text/notice: the body is a single raw EUC-KR string read in place from B=*node and word-wrapped by 0x15b10c (a text-box builder), not a field-structured record.",
+   "evidence": "fo 0x56e6c-0x56ef6: allocs 0x14B box at G[0x1a0], calls 0x15b10c(box,node,0xc,-1,0x99,9); 0x15b10c derives *node as the string source and calls text-measure 0x13f3f8/0x13f504 (char-width/line-count, EUC-KR 0x80-mask double-byte).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x15b10c is a UI word-wrap/text-box builder, NOT a body field reader; args are (dest_obj, node/str, 0xc, maxlines=-1, pixel_width=0x99, 9).",
+   "evidence": "fo 0x5b10c body calls 0x13f3f8 (measure break pos) and 0x13f504 (count lines: masks 0x80 for EUC-KR lead byte, special-cases 0x3b/0x2e/0x2c/0x20), allocates line-pointer array (0x15b448), splits string into lines; returns line array.",
+   "confidence": "HIGH"
+  }
+ ],
+ "open_questions": [
+  "cat5 record field1 (20B) semantic layout: is it an item struct or a name string? (My region only proves the 21B stride + LE u16 count; the warehouse agent should decode the 20B blob.)",
+  "cat5 header body[0]->G[0x34a] and body[1]->G[0x1a4] exact meaning (page flag / total-count / more-pages?) — grounded as raw u8 copies, semantic unknown.",
+  "Whether any un-disassembled cat5 op case (jump table indices for op 4..0x3f) uses the M+2 cursor; scan says no halfword-at-2 on the node anywhere, so almost certainly not, but individual op cases beyond op3 were not each opened.",
+  "cat4 op=0x3e (CERTIDATA/phone request, handler g 0x15709a) reads mostly global save state, not the reply body; its body dependence (if any) not fully mapped."
+ ],
+ "artifacts": [
+  "d:/tmp/client.bin (read-only source binary; guest = 0x100000 + fo)",
+  "C:/Users/<user>/AppData/Local/Temp/claude/disp.txt (dispatcher fo 0x56a40 disasm)",
+  "C:/Users/<user>/AppData/Local/Temp/claude/cat5.txt + cat5_loop.txt + cat5_c.txt (cat5 warehouse handler)",
+  "C:/Users/<user>/AppData/Local/Temp/claude/cat4.txt (cat4 recovery handler)",
+  "C:/Users/<user>/AppData/Local/Temp/claude/cat1.txt + r5b10c.txt + r5b10c_b.txt (cat1 login/notice + text-box builder)"
+ ]
+}

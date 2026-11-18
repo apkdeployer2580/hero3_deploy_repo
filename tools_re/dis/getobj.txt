@@ -1,0 +1,39 @@
+04ad10  mov      ip, r3 
+04ad12  mov      r3, sl 
+04ad14  push     {r3} 
+04ad16  mov      r3, ip 
+04ad18  ldr      r3, [pc, #0x10]   ; lit@0x4ad2c = 0x00067f1e
+04ad1a  mov      sl, r3 
+04ad1c  ldr      r3, [pc, #0x10]   ; lit@0x4ad30 = 0x00000444
+04ad1e  add      sl, pc 
+04ad20  add      r3, sl 
+04ad22  ldr      r0, [r3] 
+04ad24  pop      {r3} 
+04ad26  mov      sl, r3 
+04ad28  bx       lr 
+04ad2a  movs     r0, r0 
+04ad2c  ldrb     r6, [r3, #0x1c] 
+04ad2e  movs     r6, r0 
+04ad30  lsls     r4, r0, #0x11 
+04ad32  movs     r0, r0 
+04ad34  push     {r4, lr} 
+04ad36  mov      r4, sl 
+04ad38  push     {r4} 
+04ad3a  ldr      r3, [pc, #0x44]   ; lit@0x4ad80 = 0x00067efc
+04ad3c  mov      sl, r3 
+04ad3e  ldr      r3, [pc, #0x44]   ; lit@0x4ad84 = 0x00000448
+04ad40  add      sl, pc 
+04ad42  add      r3, sl 
+04ad44  ldr      r3, [r3] 
+04ad46  ldr      r3, [r3] 
+04ad48  ldr      r2, [pc, #0x3c]   ; lit@0x4ad88 = 0x00ffffff
+04ad4a  ldr      r4, [r3] 
+04ad4c  movs     r1, #2 
+04ad4e  movs     r3, #0 
+04ad50  movs     r0, #0 
+04ad52  bl       #0x1a42a4 
+04ad56  ldr      r3, [pc, #0x34]   ; lit@0x4ad8c = 0x0000044c
+04ad58  add      r3, sl 
+04ad5a  ldr      r3, [r3] 
+04ad5c  ldr      r3, [r3] 
+04ad5e  movs     r1, #1 

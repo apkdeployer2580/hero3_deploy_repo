@@ -1,0 +1,25 @@
+# 의상 4 — 헬 엔딩 보상 (main 전용: 바닐라에는 헬이 없어 얻는 길이 없다).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# 169차: 사용자 요청으로 재채색 없이 프레임마다 새로 그렸다 — tools_re/costume_atelier/sets/halloween.py.
+set            = 할로윈-해골 가면
+acquire        = clear.hell
+helmet         = 할로윈-해골 가면
+helmet.desc    = 섬뜩하게 웃는 해골 가면
+armor          = 할로윈-해골 상의
+armor.desc     = 갈비뼈가 그려진 검은 상의
+gloves         = 할로윈-해골 장갑
+gloves.desc    = 뼈 손이 달린 검은 장갑
+shoes          = 할로윈-해골 하의
+shoes.desc     = 다리뼈가 그려진 검은 하의
+weapon         = 할로윈-뼈다귀
+weapon.desc    = 무기처럼 휘두르는 뼈
+weapon.spear   = 할로윈-뼈 창
+weapon.sword   = 할로윈-뼈다귀
+weapon.knife   = 할로윈-해골 손톱
+weapon.gun     = 할로윈-뼈 권총
+weapon.rifle   = 할로윈-뼈 대포
+weapon.dark    = 할로윈-호박불
+weapon.holy    = 할로윈-유령불
+shield         = 할로윈-갈비뼈방패
+shield.desc    = 갈비뼈로 엮은 방패

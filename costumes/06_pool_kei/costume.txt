@@ -1,0 +1,22 @@
+# 의상 6 — 기본 지급 · 케이 전용 (hero = kei: 다른 주인공의 옷장에는 안 나온다).
+# 169차: 사용자 요청으로 재채색 없이 프레임마다 새로 그렸다 — tools_re/costume_atelier/sets/pool_kei.py.
+set            = 수영장 파티 케이
+acquire        = starter
+hero           = kei
+helmet         = 수영장 선글라스
+helmet.desc    = 파란 렌즈의 선글라스
+armor          = 수영장 꽃목걸이
+armor.desc     = 맨몸에 건 꽃목걸이
+gloves         = 수영장 맨팔
+gloves.desc    = 소매 없이 드러낸 팔
+shoes          = 수영장 수영복
+shoes.desc     = 꽃무늬 파란 수영복과 샌들
+weapon         = 수영장 장난감
+weapon.desc    = 물놀이 장난감 무기
+weapon.spear   = 수영장 파라솔
+weapon.sword   = 수영장 풍선 검
+weapon.knife   = 수영장 물갈퀴
+weapon.dark    = 수영장 물보라
+weapon.holy    = 수영장 비눗방울
+shield         = 수영장 비치볼
+shield.desc    = 알록달록한 비치볼

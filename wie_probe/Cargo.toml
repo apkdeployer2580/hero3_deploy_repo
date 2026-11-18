@@ -1,0 +1,47 @@
+[package]
+name = "wie_probe"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Headless host runner: boots the bundled game with NO window/audio so we can
+# (a) dump frames, (b) capture the full WIPI draw-call trace, and (c) run the
+# game at an arbitrary framebuffer size to measure what it actually draws.
+# Deliberately depends on nothing GUI (wie_cli's winit/softbuffer stack is what
+# crashed on this windows-gnu host).
+
+# The probe exists to measure the SAME code the APK runs, so by default it is
+# built with the APK's compile-time log filtering (see `quiet_release`). Anything
+# below INFO is gone at compile time, which is worth a few percent of the
+# interpreter's per-instruction cost — and leaving it in would make the probe's
+# instructions/second number not comparable to the device's.
+#
+# ⚠ This disables the `RUST_LOG=wie_wipi_c=debug ... 2> trace.log` draw-call
+# capture documented at the top of src/main.rs, because those are `tracing::debug!`
+# events. To capture a draw-call trace again:
+#     cargo build --release -p wie_probe --no-default-features
+[features]
+default = ["quiet_release"]
+quiet_release = ["log/release_max_level_info", "tracing/release_max_level_info"]
+# Last link of the pass-through chain to arm32_cpu's per-instruction tracer:
+#     cargo build --release -p wie_probe --no-default-features --features insn_trace
+# (`quiet_release` would compile the trace! calls' level check back out again, so
+# the tracer is only useful with default features off.)
+insn_trace = ["wie_ktf/insn_trace"]
+
+[dependencies]
+async-trait = { version = "^0.1" }
+tracing = { version = "^0.1" }
+tracing-subscriber = { version = "=0.3.18", features = ["env-filter"] }
+# Not called from this crate's own code — it is here purely so `quiet_release`
+# has a `log` dependency to attach `release_max_level_info` to. `arm32_cpu` (the
+# interpreter) logs through `log`, not `tracing`, so the tracing-side switch
+# alone would not reach it.
+log = { version = "^0.4" }
+
+# Same git deps as wie_android -> the workspace [patch] redirects them to
+# vendor/wie, so this runs the exact core the APK runs.
+wie_backend = { git = "https://github.com/dlunch/wie.git" }
+wie_ktf = { git = "https://github.com/dlunch/wie.git" }
+wie_lgt = { git = "https://github.com/dlunch/wie.git" }
+wie_util = { git = "https://github.com/dlunch/wie.git" }

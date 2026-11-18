@@ -1,0 +1,24 @@
+# 의상 12 — 하드코어 엔딩 보상 · 리츠 전용 (175차: 기본 지급 → 하드코어 엔딩 보상). 169차: 사용자 참고 그림 5 (검은 뿔의 긴 백발 · 흰 모피 망토 · 청록 보석 강철 갑옷 · 털 장화).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/snow_lord.py 가 프레임마다 그린다(재채색 없음).
+set            = 설원의 군주
+acquire        = clear.hard
+hero           = ritz
+helmet         = 설원의 군주 머리
+helmet.desc    = 검은 뿔이 돋은 긴 백발
+armor          = 설원의 군주 갑옷
+armor.desc     = 흰 모피 망토와 청록 흉갑
+gloves         = 설원의 군주 장갑
+gloves.desc    = 강철 판금 건틀릿
+shoes          = 설원의 군주 하의
+shoes.desc     = 모피 망토 자락과 털 장화
+weapon         = 설원의 군주 무기
+weapon.desc    = 청록 보석을 박은 강철 무기
+weapon.spear   = 설원의 군주 창
+weapon.sword   = 설원의 군주 대검
+weapon.knife   = 설원의 군주 손톱
+weapon.gun     = 설원의 군주 권총
+weapon.rifle   = 설원의 군주 장총
+shield         = 설원의 군주 방패
+shield.desc    = 흰 모피를 두른 강철 방패

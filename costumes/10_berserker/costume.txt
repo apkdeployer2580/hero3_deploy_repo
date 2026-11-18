@@ -1,0 +1,24 @@
+# 의상 10 — 노말 엔딩 보상 · 케이 전용 (175차: 기본 지급 → 노말 엔딩 보상). 169차: 사용자 참고 그림 3 (붉은 장발 · 검은 눈가리개 · 붉은 문신 맨몸 · 줄무늬 붕대 · 해진 천).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/berserker.py 가 프레임마다 그린다(재채색 없음).
+set            = 광전사
+acquire        = clear.normal
+hero           = kei
+helmet         = 광전사 가면
+helmet.desc    = 붉은 장발과 검은 눈가리개
+armor          = 광전사 문신
+armor.desc     = 붉은 문신을 새긴 맨몸
+gloves         = 광전사 붕대
+gloves.desc    = 줄무늬 붕대를 감은 팔
+shoes          = 광전사 하의
+shoes.desc     = 해진 천을 두른 검은 바지
+weapon         = 광전사 무기
+weapon.desc    = 피에 굶주린 검은 무기
+weapon.spear   = 광전사 대낫
+weapon.sword   = 광전사 대검
+weapon.knife   = 광전사 손톱
+weapon.dark    = 광전사 혈마법진
+weapon.holy    = 광전사 월마법진
+shield         = 광전사 방패
+shield.desc    = 해진 검은 방패

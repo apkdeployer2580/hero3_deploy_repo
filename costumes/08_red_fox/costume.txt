@@ -1,0 +1,24 @@
+# 의상 8 — 노말 엔딩 보상 · 리츠 전용 (175차: 기본 지급 → 노말 엔딩 보상). 169차: 사용자 참고 그림 1 (붉은 롱코트 · 검은 털 깃 · 금빛 불꽃 자수).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/red_fox.py 가 프레임마다 그린다(재채색 없음).
+set            = 붉은여우
+acquire        = clear.normal
+hero           = ritz
+helmet         = 붉은여우 머리
+helmet.desc    = 제멋대로 뻗친 검은 머리
+armor          = 붉은여우 상의
+armor.desc     = 검은 털 깃의 진홍빛 롱코트
+gloves         = 붉은여우 장갑
+gloves.desc    = 진홍 소매와 검은 가죽 장갑
+shoes          = 붉은여우 하의
+shoes.desc     = 불꽃 자수 코트 자락과 장화
+weapon         = 붉은여우 무기
+weapon.desc    = 진홍과 금으로 꾸민 무기
+weapon.spear   = 붉은여우 창
+weapon.sword   = 붉은여우 도
+weapon.knife   = 붉은여우 손톱
+weapon.gun     = 붉은여우 권총
+weapon.rifle   = 붉은여우 장총
+shield         = 붉은여우 방패
+shield.desc    = 여우 문장을 새긴 진홍 방패

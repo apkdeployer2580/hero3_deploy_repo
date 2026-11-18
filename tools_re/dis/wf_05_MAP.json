@@ -1,0 +1,108 @@
+{
+ "region": "login / handshake REQUEST builders (client->server) — fo 0x56a08 (handshake), 0x56bf8 (cat=1 response-handler / auth-request emitter), 0x56f3c (cat=4 response-handler / slot-save emitter), plus session-init 0x75cdc.",
+ "summary": "## Login / handshake module — request grammar & sequence\n\n**Architecture correction (caller-verified, HIGH):** the two \"builders\" in this region are actually **response handlers** dispatched by the RX fn `0x56a40`, not proactively-called request builders.\n- `0x56bf8` has **exactly 1 caller** = RX dispatcher `cat==1` case (fo 0x56b74→0x56b82); it receives `r0 = op = wire byte[1]`, `r1 = frame`.\n- `0x56f3c` has **exactly 1 caller** = RX dispatcher `cat==4` case (fo 0x56b88→0x56b96); same args.\nOnly the **handshake `01 01 02`** is sent unsolicited. Everything else is emitted *in reaction to* a server frame. This is a **server-driven** protocol: the server's cat/op tells the client which follow-up to send.\n\nNearby EUC-KR/ASCII constants (resolved via sl-globals, sl_fo=0xb2c40) prove this is the **KTF carrier auth / billing / online-bootstrap** module, not a game \"login\": `PHONENUMBER`, `%s`, `3`, `SMS 요청입니다`, `SMS HERO3`, `공지사항 요청입니다`, `슬롯 정보 요청중입니다`, `./Hero3SlotSave`.\n\n### net_begin_session(state)  = fn 0x75cdc (guest 0x175cdc)  [HIGH]\nThe mysterious `bl 0x175cdc(3)` inside the handshake. `ctx = get_data_base() + 0xa3ac` where `get_data_base()=fn 0x4ad10` returns `*(sl+0x444)` (runtime data segment, OOB in file → BSS). It performs:\n- `memset(ctx+0xa0, 0, 0x100)`  — clears a 256-byte region (pending/slot table)\n- `*(ctx+0x9c) = state`  — stores the connection PHASE (arg). Handshake passes **3**; the connect/reset path (0x56efa, and 14 other sites) passes **0**; one site 0x744d2 passes **1**.\n- `*(ctx+0x461) = 0` (byte flag)\nSo it is a **per-request/session state reset**. `ctx` is the shared net-context object; its fields are the feedback channel between the RX dispatcher and this module.\n\n### Wire framing (corroborated)\nBoth directions: `[u32 LE total_len (incl. 4-byte header)] [payload]`. On the wire, `payload[0]=cat`, `payload[1]=op`. The RX side copies payload to an object at `*frame+8`, so in disasm `cat = obj[8]`, `op = obj[9]`.\n\n### RX dispatcher fn 0x56a40 — category switch (feeds back into this module) [HIGH]\n`rx_peek(0x17e9e8)` → if null return; `rx_pop(0x17ea14)`; read u16 len at obj[0]; `cmp #5; bgt` guards a short/error path (len≤5 → dispose via obj-vtable[0x58]); else switch on **cat = (int8)obj[8]**, passing `(op=(int8)obj[9], frame)`:\n- cat 0  → bl 0x1582e0\n- **cat 1  → bl 0x56bf8**  (this module: auth-request emitter)\n- **cat 4  → bl 0x56f3c**  (this module: slot-save emitter)\n- cat 5  → bl 0x157394\n- cat 0x1f → inline handler (0x17e4c4 + 0x175b98(str,7,1,1))\n- cat 0x64 → bl 0x1581a8\n- default → obj-vtable[0x58] dispose\nBoth `0x56a40` (RX) and heartbeat `0x7eb60` are called from the same 7 poll-loop sites (0x649xx, 0x6d59c).\n\n### cat=1 handler 0x56bf8 — switch on server op (arg0) [HIGH]\n`op==6` → nothing. `op==1` → send **01 3d** creds. `op==0x3d` → send one of 04 3e / 1f 00 / 01 3e depending on **`*(ctx+0x38)`** sub-phase. `op==0x3e` → connection (re)init: free+alloc `*(ctx+0x1a0)`, init via 0x15b10c(…,0xc,-1,[0x99,9]), `net_begin_session(0)` — **no send**.\n\n**op==1  →  `01 3d <16B phone> <20B id> <u32LE seq> 00`** (fo 0x56d88):\n- byte0/1 = put_u8(1),put_u8(0x3d).\n- 16B (put_bytes,0x10): built by `vtable.getProperty(\"PHONENUMBER\", buf, 0x20)` (indirect call via `bx r4` veneer 0x1a42a4, r4=obj_vtable[0x74]) — **then overwritten** by a loop (fo 0x56cc4–0x56d1a) writing buf[i]=i+0x30 for i≤9 else 0 → as-compiled the field is the constant **`30 31 32 33 34 35 36 37 38 39 00 00 00 00 00 00`** (\"0123456789\"+6 nul). Reads as a debug/privacy stub of the phone number.\n- 20B (put_bytes,0x14): `vtable.sprintf(buf,\"%s\",\"3\")` (via 0x1a42a4, r4=obj_vtable[4]) → **`33`+19 nul** (\"3\", the Hero3 service id).\n- u32LE (put_u32_le 0x17e1c4): `*(*(sl+0x16c)+0xc)` — a request sequence/retry counter (incremented by the 0x3d/0x3e sub-branches).\n- trailing `00` (put_u8 0). Total frame len = 4+43 = **0x2f (47)**.\n\n**op==0x3d & `*(ctx+0x38)==9`  →  `04 3e <b>`** (fo 0x56de2): b = `(int8)*(ctx+0x4c)`. UI \"슬롯 정보 요청중입니다\" (sl+0x48c). Increments `*(sl+0x16c)+0xc`.\n\n**op==0x3d & `*(ctx+0x38)==7`  →  `1f 00 <9B \"SMS HERO3\">`** (fo 0x56e20): body = put_bytes(sl+0x494=\"SMS HERO3\",9). UI \"SMS 요청입니다\" (sl+0x490). This is the **SMS carrier-auth** request. cat=0x1f/op=00.\n\n**op==0x3d & else  →  `01 3e`** (fo 0x56e66): no body. Sets `*(ctx+0x40)=0`, increments counter, UI \"공지사항 요청입니다\" (sl+0x498).\n\n### cat=4 handler 0x56f3c — switch on server op (arg0) [HIGH]\n`op==0x3d` → send **`05 3d 00`** (fo 0x56fb0: put_u8(5),put_u8(0x3d),put_u8(0),flush), then increment counter `*(base+0xaca8)`, call 0x15727c, and enter the slot-save path (clamps server byte obj[0xa]≤8, uses filename sl+0x49c=\"./Hero3SlotSave\"). `op==0x3e` → state/screen transition (alloc, 0x1960bc, set base+0xf2/0xd9 fields) — **no send**. This is the recovery / network-warehouse **slot backup** module.\n\n### LOGIN / HANDSHAKE SEQUENCE\n1. **Connect** → completion handler 0x7e4be → **fn 0x7eb08**: resets timer obj `*(sl+0x9d0)` ([0]=0,[4]=0,[0x14]=1), calls `net_begin_session(3)` (inside 0x56a08) then **sends handshake `01 01 02`** (frame `07 00 00 00 01 01 02`), arms next heartbeat = now+0x1388 (5000 ms). This is the ONLY unsolicited login frame. [HIGH]\n2. Server replies (all cat=1) drive the rest via RX 0x56a40 → 0x56bf8:\n   - server cat1/op1  → client sends `01 3d …` (phone+id+seq auth credentials)\n   - server cat1/op0x3d → client sends the pending sub-request per `ctx+0x38`: 04 3e (slot-info) / 1f00 \"SMS HERO3\" (SMS auth) / 01 3e (notice)\n   - server cat1/op0x3e → client re-inits connection (net_begin_session(0)), no send\n   - server cat1/op6  → done/no-op\n   - server cat4/op0x3d → client sends `05 3d 00` (begin slot backup); cat4/op0x3e → proceed/transition\n3. Heartbeat `00 0a` (frame `06 00 00 00 00 0a`) every 5s, serviced by fn 0x7eb60 from the poll loop, independent of the above.\n\n### Shared ctx map (ctx = data_base + 0xa3ac)\n+0x38 = auth sub-phase (server-driven; {7→SMS,9→slot-info,else→notice}) [MED, writer not disasm'd] · +0x40 = flag cleared on 01 3e · +0x4c = byte param sent in 04 3e · +0x9c = session state (0/1/3) · +0xa0..+0x1a0 = 256B table cleared by net_begin_session · +0x1a0 = connection object ptr (alloc/free on op 0x3e) · +0x461 = byte flag cleared by net_begin_session. Second counter for cat=4 = *(base+0xaca8).",
+ "claims": [
+  {
+   "statement": "The handshake fn 0x56a08 sends 01 01 02 and first calls net_begin_session(3); it is invoked once from the connect-completion path (0x7eb08 ← 0x7e4be), making 01 01 02 the only unsolicited login frame.",
+   "evidence": "fo 0x56a1e `movs r0,#3; bl #0x175cdc`; 0x56a22-0x56a30 three `movs r0,#1/1/2; bl 0x17e150`; 0x56a34 `bl 0x17e890` (flush). find_callers 0x56a08 → 1 caller @0x7eb26 (inside fn 0x7eb08). fn 0x7eb08 @0x7eb22 `strb #1,[r5,#0x14]`, @0x7eb26 `bl 0x156a08`, @0x7eb38 adds 0x1388(=5000) to time → *(obj+8). find_callers 0x7eb08 → 1 caller @0x7e4be.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "net_begin_session (fn 0x75cdc) resets the shared net-context (ctx = get_data_base()+0xa3ac): memset(ctx+0xa0,0,0x100), *(ctx+0x9c)=state_arg, *(ctx+0x461)=0. get_data_base (0x4ad10) returns *(sl+0x444).",
+   "evidence": "0x75d0c `movs r3,#0x80; lsls r3,#1`(=0x100) then 0x75d16 `bl 0x19fb78`(memset) on ctx+0xa0; 0x75d22 `adds r2,#0x9c; str arg,[r2]`; 0x75d30 lit 0x461 `strb #0,[ctx+0x461]`. 0x4ad20 `add r3,sl; ldr r0,[r3]` with lit 0x444. find_callers 0x75cdc → r0=3 @0x56a1e, r0=0 @0x56efa +13 more, r0=1 @0x744d2.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x56bf8 is the RX dispatcher's cat==1 response handler (not a proactive builder); it receives r0=op=(int8)wire_byte[1] and switches: op1→'01 3d..', op0x3d→sub-branch, op0x3e→conn-reset(no send), op6→noop.",
+   "evidence": "RX 0x56a40: 0x56ac6-0x56ad6 `ldrb r3,[obj,#9]; str→local_10`; cat==1 branch 0x56b74 `ldr r2,[local_10]; r0=op; r1=frame; bl 0x156bf8`. find_callers 0x56bf8 → exactly 1 caller @0x56b82. Inside: 0x56c46 `cmp #6`, 0x56c60 `cmp #1 beq 0x56c84`, 0x56c6e `cmp #0x3d`, 0x56c7c `cmp #0x3e`.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat1/op1 request = 01 3d <16B> <20B> <u32LE> 00. The 16B field is fetched via vtable.getProperty(\"PHONENUMBER\",buf,0x20) but then unconditionally overwritten to the constant '0123456789'+6 nul by a loop; the 20B field = vtable.sprintf(buf,\"%s\",\"3\")=\"3\"; the u32 = *(*(sl+0x16c)+0xc) sequence counter.",
+   "evidence": "0x56d1c-0x56d30 put_u8(1),put_u8(0x3d),put_bytes(buf,0x10). Loop 0x56cea `strb (i+0x30),[buf,i]`, 0x56d0a `strb 0,[buf,i]` for i>9, guard 0x56cce `cmp #0x1f`. 2nd: 0x56d64 `bl 0x1a42a4`(=bx r4, r4=vtable[4]) r1=\"%s\"(sl+0x484) r2=\"3\"(sl+0x488); 0x56d70 put_bytes(buf,0x14). 0x56d7a `ldr r3,[*(sl+0x16c),#0xc]; bl 0x17e1c4`(put_u32_le); 0x56d84 put_u8(0). sl+0x480 resolves to ascii 'PHONENUMBER'. 0x1a42a4 disasm = `bx r4` veneer.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat1/op0x3d sub-dispatches on *(ctx+0x38): ==9 → '04 3e <(int8)ctx+0x4c>'; ==7 → '1f 00' + 9-byte body 'SMS HERO3'; else → '01 3e' (and sets ctx+0x40=0). These are slot-info, SMS-auth, and notice requests respectively.",
+   "evidence": "0x56d94 `ldr r3,[ctx,#0x38]; cmp #9; bne 0x56de8`. B: 0x56dc4-0x56dde put_u8(4),put_u8(0x3e),put_u8((int8)*(ctx+0x4c)). C: 0x56def `cmp #7`; 0x56e06-0x56e1c put_u8(0x1f),put_u8(0),put_bytes(sl+0x494,9); sl+0x494=ascii 'SMS HERO3'. else: 0x56e58 `str 0,[ctx,#0x40]`; 0x56e5a put_u8(1),put_u8(0x3e). UI strings sl+0x48c/0x490/0x498 via bl 0x175b98.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat1/op0x3e performs connection (re)initialization with no network send: free+re-alloc *(ctx+0x1a0), init via 0x15b10c(*arg1,0xc,-1,{0x99,9}), then net_begin_session(0).",
+   "evidence": "0x56e6c-0x56ea0 test/free *(ctx+0x1a0) (0xd0<<1=0x1a0); 0x56eb8 `movs r0,#0x14; bl 0x1a42a0`(=bx r3 alloc); 0x56ee4-0x56ef2 stack {0x99,9}, `bl 0x15b10c`; 0x56efa `movs r0,#0; bl 0x175cdc`. No 0x17e890 flush in this branch.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x56f3c is the RX dispatcher's cat==4 handler; on server op==0x3d it sends '05 3d 00' then begins the './Hero3SlotSave' slot-backup flow; on op==0x3e it transitions state without sending.",
+   "evidence": "find_callers 0x56f3c → 1 caller @0x56b96 (RX cat==4 branch 0x56b88). 0x56f8a `cmp #0x3d beq 0x56f9e`, 0x56f96 `cmp #0x3e`. 0x56f9e-0x56fb0 put_u8(5),put_u8(0x3d),put_u8(0),flush. Post-send: 0x56fc8 increments *(base+0xaca8); 0x56fd6 clamps obj[0xa]≤8; sl+0x49c=ascii './Hero3SlotSave'. op==0x3e path 0x5709a has no flush.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The RX dispatcher 0x56a40 reads a u16 length (obj[0]), guards len≤5 as short/error, then switches on cat=(int8)obj[8] to handlers {0:0x1582e0, 1:0x56bf8, 4:0x56f3c, 5:0x157394, 0x1f:inline, 0x64:0x1581a8}, passing (op=obj[9], frame).",
+   "evidence": "0x56a50 `bl 0x17e9e8`(rx_peek); 0x56a66 `bl 0x17ea14`(rx_pop); 0x56a88 `ldrh r3,[obj]; cmp #5; bgt 0x56ab4`; 0x56abe `ldrb [obj,#8]`(cat), 0x56ad0 `ldrb [obj,#9]`(op). Switch: 0x56aee cmp#4→0x56b88, 0x56b06 cmp#0→0x56b60(0x1582e0), 0x56b12 cmp#1→0x56b74(0x56bf8), 0x56b20 cmp#0x1f→0x56bb0, 0x56b38 cmp#5→0x56b9c(0x157394), 0x56b46 cmp#0x64→0x1581a8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The u32LE seq field and the sub-branch counters are runtime-derived; ctx+0x38 auth sub-phase writer was not disassembled, so the 7/9/else→SMS/slot/notice mapping is inferred from the co-located UI strings rather than proven from the setter.",
+   "evidence": "sl+0x16c and sl+0x444 resolve to tgt_fo 0xc2bcc / 0xb7b6c which are OOB of the 0xb3a10 file (BSS/heap runtime). *(ctx+0x38) is only read (0x56d94/0x56df0) in this region, never written here. Mapping rests on bl 0x175b98(sl+0x48c/0x490/0x498) UI strings.",
+   "confidence": "MED"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "0x56a34",
+   "template": "07 00 00 00 | 01 01 02",
+   "meaning": "Handshake / session-open. cat=01, op=01, body byte=02. Sent once, unsolicited, immediately after socket connect (fn 0x7eb08). net_begin_session(3) is called first (ctx state=3). Total_len=7.",
+   "field_notes": "All three payload bytes are constant (movs r0,#1/#1/#2). No runtime fields. Followed by arming heartbeat timer (+5000 ms)."
+  },
+  {
+   "site_fo": "0x56d88",
+   "template": "2f 00 00 00 | 01 3d <16B phone> <20B id> <u32LE seq> 00",
+   "meaning": "Carrier auth credentials. Emitted by cat=1 handler when server op==1. cat=01, op=0x3d. Total_len=0x2f (47).",
+   "field_notes": "16B phone = getProperty(\"PHONENUMBER\") but OVERWRITTEN by loop to constant `30 31 32 33 34 35 36 37 38 39 00 00 00 00 00 00` ('0123456789'+6nul, a stub). 20B id = sprintf(\"%s\",\"3\") = `33` + 19×`00` ('3' = Hero3 service id). u32LE seq = *(*(sl+0x16c)+0xc), request counter (LE). Final byte 00 constant. Both string fields via indirect vtable calls (bx r4 veneer 0x1a42a4)."
+  },
+  {
+   "site_fo": "0x56de2",
+   "template": "07 00 00 00 | 04 3e <b>",
+   "meaning": "Slot-info request. cat=1 handler, server op==0x3d, sub-selected when *(ctx+0x38)==9. Shows UI '슬롯 정보 요청중입니다'. Total_len=7.",
+   "field_notes": "<b> = (int8)*(ctx+0x4c), a runtime byte parameter (sign-extended then put_u8). Before send: *(*(sl+0x16c)+0xc) incremented."
+  },
+  {
+   "site_fo": "0x56e20",
+   "template": "0f 00 00 00 | 1f 00 53 4d 53 20 48 45 52 4f 33",
+   "meaning": "SMS carrier-auth request. cat=1 handler, server op==0x3d, sub-selected when *(ctx+0x38)==7. cat=0x1f, op=00, 9-byte fixed body 'SMS HERO3'. Shows UI 'SMS 요청입니다'. Total_len=0x0f (15).",
+   "field_notes": "Body = put_bytes(sl+0x494,9) = ASCII 'SMS HERO3' (constant). No runtime fields on the wire."
+  },
+  {
+   "site_fo": "0x56e66",
+   "template": "06 00 00 00 | 01 3e",
+   "meaning": "Generic / notice request. cat=1 handler, server op==0x3d, sub-selected when *(ctx+0x38) is neither 7 nor 9. cat=01, op=0x3e, no body. Shows UI '공지사항 요청입니다'. Total_len=6.",
+   "field_notes": "No payload beyond cat/op. Side effects: *(ctx+0x40)=0; counter *(*(sl+0x16c)+0xc) incremented."
+  },
+  {
+   "site_fo": "0x56fb0",
+   "template": "07 00 00 00 | 05 3d 00",
+   "meaning": "Slot-save begin (recovery / network-warehouse backup ack). cat=4 handler, server op==0x3d. cat=05, op=0x3d, byte=00. Total_len=7. Followed by './Hero3SlotSave' file flow.",
+   "field_notes": "All three payload bytes constant. Post-send increments a separate counter *(base+0xaca8) and clamps server byte obj[0xa] to ≤8."
+  }
+ ],
+ "open_questions": [
+  "Who writes *(ctx+0x38) (the auth sub-phase 7/9/else)? Likely the cat=0/5/0x64 handlers (0x1582e0 / 0x157394 / 0x1581a8) parse server data into it — disassemble those to prove the 7→SMS / 9→slot-info / else→notice mapping instead of inferring it from UI strings.",
+  "What server response does each client request wait for? The client is purely reactive to server cat/op, so the full ordering depends on server-side logic not present in the binary — needs a live/captured session to confirm the exact op progression (op1→op0x3d→op0x3e→op6).",
+  "Semantic of the 20-byte 'id' field '3' and the u32 seq: confirm '3'=Hero3 service/game id and *(sl+0x16c)+0xc is a monotonic request sequence vs. retry count (both plausible from increments at 0x56dac/0x56e38).",
+  "Is the PHONENUMBER→'0123456789' overwrite a debug/test stub that a retail/server build would remove, or intentional? Affects whether a private server should expect a real MSISDN in the 16-byte field.",
+  "cat=4/op=0x3e transition path (0x5709a) sets base+0xf2/0xd9/0xf8 fields and calls 0x1960bc/0x195e40 — map these to the post-auth screen/state to complete the online bootstrap picture."
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/login_handshake.txt",
+  "d:/tmp/wie_app/tools_re/dis/sub_175cdc.txt",
+  "d:/tmp/wie_app/tools_re/dis/login_region2.txt",
+  "d:/tmp/wie_app/tools_re/dis/login_region3.txt",
+  "d:/tmp/wie_app/tools_re/dis/rx_dispatch.txt",
+  "d:/tmp/wie_app/tools_re/dis/get_base.txt",
+  "d:/tmp/wie_app/tools_re/dis/handshake_caller.txt",
+  "d:/tmp/wie_app/tools_re/dis/region3_op3e.txt",
+  "d:/tmp/wie_app/tools_re/dis/fmt_fns.txt",
+  "d:/tmp/wie_app/tools_re/dis/resolve_globals.py"
+ ]
+}

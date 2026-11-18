@@ -1,0 +1,540 @@
+0575f8  str.w    r1, [sb, #0xc03]   ; sl+0xc03 = data@0xb3843 -> 0x0aad4c00
+0575fc  ldr      r3, [r3, #0xc] 
+0575fe  cmp      r3, #0 
+057600  beq      #0x157624 
+057602  bl       #0x18578c 
+057606  adds     r2, r0, #0 
+057608  movs     r3, #0 
+05760a  str      r3, [r2, #0xc] 
+05760c  bl       #0x18578c 
+057610  adds     r3, r0, #0 
+057612  adds     r3, #0x10 
+057614  adds     r0, r3, #0 
+057616  movs     r1, #7 
+057618  movs     r2, #1 
+05761a  movs     r3, #1 
+05761c  bl       #0x175b98 
+057620  bl       #0x158172 
+057624  adds     r3, r7, #0 
+057626  subs     r3, #0xc 
+057628  ldr      r3, [r3] 
+05762a  adds     r2, r3, #0 
+05762c  adds     r2, #0x9c 
+05762e  movs     r3, #0 
+057630  str      r3, [r2] 
+057632  bl       #0x158172 
+057636  adds     r3, r7, #0 
+057638  subs     r3, #0xc 
+05763a  ldr      r3, [r3] 
+05763c  movs     r4, #0xbe 
+05763e  lsls     r4, r4, #2 
+057640  adds     r2, r3, r4 
+057642  movs     r3, #0 
+057644  str      r3, [r2] 
+057646  adds     r3, r7, #0 
+057648  subs     r3, #0xc 
+05764a  ldr      r3, [r3] 
+05764c  movs     r0, #0xbe 
+05764e  lsls     r0, r0, #2 
+057650  adds     r2, r3, r0 
+057652  adds     r3, r7, #0 
+057654  subs     r3, #0x10 
+057656  ldr      r3, [r3] 
+057658  adds     r3, #0xa 
+05765a  adds     r0, r2, #0 
+05765c  adds     r1, r3, #0 
+05765e  movs     r2, #4 
+057660  bl       #0x19f624 
+057664  adds     r2, r7, #0 
+057666  subs     r2, #0x20 
+057668  movs     r3, #0 
+05766a  strb     r3, [r2, #1] 
+05766c  adds     r2, r7, #0 
+05766e  subs     r2, #0x20 
+057670  movs     r3, #0 
+057672  strb     r3, [r2] 
+057674  adds     r2, r7, #0 
+057676  subs     r2, #0x20 
+057678  movs     r3, #0 
+05767a  str      r3, [r2, #8] 
+05767c  adds     r2, r7, #0 
+05767e  subs     r2, #0x20 
+057680  adds     r3, r7, #0 
+057682  subs     r3, #0xc 
+057684  ldr      r3, [r3] 
+057686  movs     r1, #0xc2 
+057688  lsls     r1, r1, #2 
+05768a  adds     r3, r3, r1 
+05768c  ldr      r3, [r3] 
+05768e  str      r3, [r2, #4] 
+057690  adds     r2, r7, #0 
+057692  subs     r2, #0x20 
+057694  movs     r3, #0 
+057696  strb     r3, [r2, #3] 
+057698  adds     r2, r7, #0 
+05769a  subs     r2, #0x20 
+05769c  movs     r3, #0 
+05769e  strb     r3, [r2, #2] 
+0576a0  movs     r0, #5 
+0576a2  bl       #0x17e150 
+0576a6  movs     r0, #0x3f 
+0576a8  bl       #0x17e150 
+0576ac  adds     r3, r7, #0 
+0576ae  subs     r3, #0x20 
+0576b0  adds     r0, r3, #0 
+0576b2  movs     r1, #0xc 
+0576b4  bl       #0x17e184 
+0576b8  bl       #0x17e890 
+0576bc  ldr      r3, [pc, #0x2cc]   ; lit@0x5798c = 0x000004ac
+0576be  add      r3, sl 
+0576c0  ldr      r3, [r3] 
+0576c2  adds     r0, r3, #0 
+0576c4  movs     r1, #3 
+0576c6  movs     r2, #1 
+0576c8  movs     r3, #0 
+0576ca  bl       #0x175b98 
+0576ce  bl       #0x158172 
+0576d2  adds     r3, r7, #0 
+0576d4  subs     r3, #0x10 
+0576d6  ldr      r3, [r3] 
+0576d8  ldrb     r3, [r3, #0xa] 
+0576da  cmp      r3, #0 
+0576dc  bne      #0x1576e0 
+0576de  b        #0x157970 
+0576e0  adds     r4, r7, #0 
+0576e2  subs     r4, #0x24 
+0576e4  bl       #0x14ad10 
+0576e8  adds     r3, r0, #0 
+0576ea  ldr      r2, [pc, #0x2a4]   ; lit@0x57990 = 0x00009e28
+0576ec  adds     r3, r3, r2 
+0576ee  ldr      r3, [r3] 
+0576f0  ldr      r3, [r3] 
+0576f2  adds     r3, #8 
+0576f4  str      r3, [r4] 
+0576f6  adds     r4, r7, #0 
+0576f8  subs     r4, #0x25 
+0576fa  bl       #0x14ad10 
+0576fe  adds     r3, r0, #0 
+057700  ldr      r0, [pc, #0x290]   ; lit@0x57994 = 0x00009c71
+057702  adds     r3, r3, r0 
+057704  ldrb     r3, [r3] 
+057706  strb     r3, [r4] 
+057708  adds     r4, r7, #0 
+05770a  subs     r4, #0x26 
+05770c  bl       #0x14ad10 
+057710  adds     r2, r0, #0 
+057712  adds     r3, r7, #0 
+057714  subs     r3, #0x25 
+057716  ldrb     r3, [r3] 
+057718  lsls     r3, r3, #0x18 
+05771a  asrs     r3, r3, #0x18 
+05771c  adds     r3, r3, r2 
+05771e  ldr      r1, [pc, #0x278]   ; lit@0x57998 = 0x00009c70
+057720  adds     r3, r3, r1 
+057722  ldrb     r3, [r3, #2] 
+057724  strb     r3, [r4] 
+057726  adds     r3, r7, #0 
+057728  subs     r3, #0x3c 
+05772a  movs     r2, #0x14 
+05772c  adds     r0, r3, #0 
+05772e  movs     r1, #0 
+057730  bl       #0x19fb78 
+057734  adds     r0, r7, #0 
+057736  subs     r0, #0x3c 
+057738  adds     r3, r7, #0 
+05773a  subs     r3, #0x24 
+05773c  ldr      r4, [r3] 
+05773e  adds     r3, r7, #0 
+057740  subs     r3, #0x26 
+057742  ldrb     r3, [r3] 
+057744  lsls     r3, r3, #0x18 
+057746  asrs     r1, r3, #0x18 
+057748  adds     r3, r7, #0 
+05774a  subs     r3, #0x25 
+05774c  ldrb     r3, [r3] 
+05774e  lsls     r3, r3, #0x18 
+057750  asrs     r2, r3, #0x18 
+057752  movs     r3, #0xf1 
+057754  lsls     r3, r3, #2 
+057756  muls     r2, r3, r2 
+057758  movs     r3, #0x3c 
+05775a  muls     r3, r1, r3 
+05775c  adds     r3, r2, r3 
+05775e  adds     r3, r3, r4 
+057760  movs     r2, #0xef 
+057762  lsls     r2, r2, #2 
+057764  adds     r3, r3, r2 
+057766  ldr      r4, [r3, #4] 
+057768  ldr      r3, [r3] 
+05776a  str      r3, [r0] 
+05776c  str      r4, [r0, #4] 
+05776e  adds     r4, r7, #0 
+057770  subs     r4, #0x3c 
+057772  adds     r3, r7, #0 
+057774  subs     r3, #0x24 
+057776  ldr      r0, [r3] 
+057778  adds     r3, r7, #0 
+05777a  subs     r3, #0x26 
+05777c  ldrb     r3, [r3] 
+05777e  lsls     r3, r3, #0x18 
+057780  asrs     r1, r3, #0x18 
+057782  adds     r3, r7, #0 
+057784  subs     r3, #0x25 
+057786  ldrb     r3, [r3] 
+057788  lsls     r3, r3, #0x18 
+05778a  asrs     r2, r3, #0x18 
+05778c  movs     r3, #0xf1 
+05778e  lsls     r3, r3, #2 
+057790  muls     r2, r3, r2 
+057792  movs     r3, #0x3c 
+057794  muls     r3, r1, r3 
+057796  adds     r3, r2, r3 
+057798  adds     r3, r3, r0 
+05779a  movs     r0, #0xed 
+05779c  lsls     r0, r0, #2 
+05779e  adds     r3, r3, r0 
+0577a0  ldrh     r3, [r3, #2] 
+0577a2  strb     r3, [r4, #8] 
+0577a4  adds     r4, r7, #0 
+0577a6  subs     r4, #0x3c 
+0577a8  adds     r3, r7, #0 
+0577aa  subs     r3, #0x24 
+0577ac  ldr      r0, [r3] 
+0577ae  adds     r3, r7, #0 
+0577b0  subs     r3, #0x26 
+0577b2  ldrb     r3, [r3] 
+0577b4  lsls     r3, r3, #0x18 
+0577b6  asrs     r1, r3, #0x18 
+0577b8  adds     r3, r7, #0 
+0577ba  subs     r3, #0x25 
+0577bc  ldrb     r3, [r3] 
+0577be  lsls     r3, r3, #0x18 
+0577c0  asrs     r2, r3, #0x18 
+0577c2  movs     r3, #0xf1 
+0577c4  lsls     r3, r3, #2 
+0577c6  muls     r2, r3, r2 
+0577c8  movs     r3, #0x3c 
+0577ca  muls     r3, r1, r3 
+0577cc  adds     r3, r2, r3 
+0577ce  adds     r3, r3, r0 
+0577d0  movs     r1, #0xee 
+0577d2  lsls     r1, r1, #2 
+0577d4  adds     r3, r3, r1 
+0577d6  ldrh     r3, [r3] 
+0577d8  strb     r3, [r4, #9] 
+0577da  adds     r4, r7, #0 
+0577dc  subs     r4, #0x3c 
+0577de  adds     r3, r7, #0 
+0577e0  subs     r3, #0x24 
+0577e2  ldr      r0, [r3] 
+0577e4  adds     r3, r7, #0 
+0577e6  subs     r3, #0x26 
+0577e8  ldrb     r3, [r3] 
+0577ea  lsls     r3, r3, #0x18 
+0577ec  asrs     r1, r3, #0x18 
+0577ee  adds     r3, r7, #0 
+0577f0  subs     r3, #0x25 
+0577f2  ldrb     r3, [r3] 
+0577f4  lsls     r3, r3, #0x18 
+0577f6  asrs     r2, r3, #0x18 
+0577f8  movs     r3, #0xf1 
+0577fa  lsls     r3, r3, #2 
+0577fc  muls     r2, r3, r2 
+0577fe  movs     r3, #0x3c 
+057800  muls     r3, r1, r3 
+057802  adds     r3, r2, r3 
+057804  adds     r3, r3, r0 
+057806  movs     r2, #0xee 
+057808  lsls     r2, r2, #2 
+05780a  adds     r3, r3, r2 
+05780c  ldrh     r3, [r3, #2] 
+05780e  strb     r3, [r4, #0xa] 
+057810  adds     r2, r7, #0 
+057812  subs     r2, #0x3c 
+057814  movs     r3, #0 
+057816  strb     r3, [r2, #0xb] 
+057818  adds     r2, r7, #0 
+05781a  subs     r2, #0x3c 
+05781c  movs     r3, #1 
+05781e  rsbs     r3, r3, #0 
+057820  str      r3, [r2, #0xc] 
+057822  adds     r0, r7, #0 
+057824  subs     r0, #0x3c 
+057826  adds     r3, r7, #0 
+057828  subs     r3, #0x24 
+05782a  ldr      r4, [r3] 
+05782c  adds     r3, r7, #0 
+05782e  subs     r3, #0x26 
+057830  ldrb     r3, [r3] 
+057832  lsls     r3, r3, #0x18 
+057834  asrs     r1, r3, #0x18 
+057836  adds     r3, r7, #0 
+057838  subs     r3, #0x25 
+05783a  ldrb     r3, [r3] 
+05783c  lsls     r3, r3, #0x18 
+05783e  asrs     r2, r3, #0x18 
+057840  movs     r3, #0xf1 
+057842  lsls     r3, r3, #2 
+057844  muls     r2, r3, r2 
+057846  movs     r3, #0x3c 
+057848  muls     r3, r1, r3 
+05784a  adds     r3, r2, r3 
+05784c  adds     r3, r3, r4 
+05784e  movs     r4, #0xf1 
+057850  lsls     r4, r4, #2 
+057852  adds     r3, r3, r4 
+057854  ldrb     r3, [r3, #2] 
+057856  strb     r3, [r0, #0x10] 
+057858  adds     r0, r7, #0 
+05785a  subs     r0, #0x3c 
+05785c  adds     r3, r7, #0 
+05785e  subs     r3, #0x24 
+057860  ldr      r4, [r3] 
+057862  adds     r3, r7, #0 
+057864  subs     r3, #0x26 
+057866  ldrb     r3, [r3] 
+057868  lsls     r3, r3, #0x18 
+05786a  asrs     r1, r3, #0x18 
+05786c  adds     r3, r7, #0 
+05786e  subs     r3, #0x25 
+057870  ldrb     r3, [r3] 
+057872  lsls     r3, r3, #0x18 
+057874  asrs     r2, r3, #0x18 
+057876  movs     r3, #0xf1 
+057878  lsls     r3, r3, #2 
+05787a  muls     r2, r3, r2 
+05787c  movs     r3, #0x3c 
+05787e  muls     r3, r1, r3 
+057880  adds     r3, r2, r3 
+057882  adds     r3, r3, r4 
+057884  movs     r1, #0xf1 
+057886  lsls     r1, r1, #2 
+057888  adds     r3, r3, r1 
+05788a  ldrb     r3, [r3, #1] 
+05788c  strb     r3, [r0, #0x11] 
+05788e  adds     r0, r7, #0 
+057890  subs     r0, #0x3c 
+057892  adds     r3, r7, #0 
+057894  subs     r3, #0x24 
+057896  ldr      r4, [r3] 
+057898  adds     r3, r7, #0 
+05789a  subs     r3, #0x26 
+05789c  ldrb     r3, [r3] 
+05789e  lsls     r3, r3, #0x18 
+0578a0  asrs     r1, r3, #0x18 
+0578a2  adds     r3, r7, #0 
+0578a4  subs     r3, #0x25 
+0578a6  ldrb     r3, [r3] 
+0578a8  lsls     r3, r3, #0x18 
+0578aa  asrs     r2, r3, #0x18 
+0578ac  movs     r3, #0xf1 
+0578ae  lsls     r3, r3, #2 
+0578b0  muls     r2, r3, r2 
+0578b2  movs     r3, #0x3c 
+0578b4  muls     r3, r1, r3 
+0578b6  adds     r3, r2, r3 
+0578b8  adds     r3, r3, r4 
+0578ba  movs     r2, #0xf2 
+0578bc  lsls     r2, r2, #2 
+0578be  adds     r3, r3, r2 
+0578c0  ldrb     r3, [r3, #1] 
+0578c2  strb     r3, [r0, #0x12] 
+0578c4  adds     r0, r7, #0 
+0578c6  subs     r0, #0x3c 
+0578c8  adds     r3, r7, #0 
+0578ca  subs     r3, #0x24 
+0578cc  ldr      r4, [r3] 
+0578ce  adds     r3, r7, #0 
+0578d0  subs     r3, #0x26 
+0578d2  ldrb     r3, [r3] 
+0578d4  lsls     r3, r3, #0x18 
+0578d6  asrs     r1, r3, #0x18 
+0578d8  adds     r3, r7, #0 
+0578da  subs     r3, #0x25 
+0578dc  ldrb     r3, [r3] 
+0578de  lsls     r3, r3, #0x18 
+0578e0  asrs     r2, r3, #0x18 
+0578e2  movs     r3, #0xf1 
+0578e4  lsls     r3, r3, #2 
+0578e6  muls     r2, r3, r2 
+0578e8  movs     r3, #0x3c 
+0578ea  muls     r3, r1, r3 
+0578ec  adds     r3, r2, r3 
+0578ee  adds     r3, r3, r4 
+0578f0  movs     r4, #0xf2 
+0578f2  lsls     r4, r4, #2 
+0578f4  adds     r3, r3, r4 
+0578f6  ldrb     r3, [r3] 
+0578f8  strb     r3, [r0, #0x13] 
+0578fa  adds     r3, r7, #0 
+0578fc  subs     r3, #0x25 
+0578fe  ldrb     r3, [r3] 
+057900  lsls     r3, r3, #0x18 
+057902  asrs     r2, r3, #0x18 
+057904  adds     r3, r7, #0 
+057906  subs     r3, #0x26 
+057908  ldrb     r3, [r3] 
+05790a  lsls     r3, r3, #0x18 
+05790c  asrs     r3, r3, #0x18 
+05790e  adds     r0, r2, #0 
+057910  adds     r1, r3, #0 
+057912  bl       #0x13c370 
+057916  adds     r3, r7, #0 
+057918  subs     r3, #0x25 
+05791a  ldrb     r3, [r3] 
+05791c  lsls     r3, r3, #0x18 
+05791e  asrs     r2, r3, #0x18 
+057920  adds     r3, r7, #0 
+057922  subs     r3, #0x26 
+057924  ldrb     r3, [r3] 
+057926  lsls     r3, r3, #0x18 
+057928  asrs     r3, r3, #0x18 
+05792a  adds     r0, r2, #0 
+05792c  adds     r1, r3, #0 
+05792e  bl       #0x14fc7c 
+057932  bl       #0x15512c 
+057936  bl       #0x15727c 
+05793a  movs     r0, #5 
+05793c  bl       #0x17e150 
+057940  movs     r0, #3 
+057942  bl       #0x17e150 
+057946  adds     r3, r7, #0 
+057948  subs     r3, #0x3c 
+05794a  adds     r0, r3, #0 
+05794c  movs     r1, #0x14 
+05794e  bl       #0x17e184 
+057952  adds     r3, r7, #0 
+057954  subs     r3, #0xc 
+057956  ldr      r3, [r3] 
+057958  ldr      r0, [pc, #0x40]   ; lit@0x5799c = 0x000001a5
+05795a  adds     r3, r3, r0 
+05795c  ldrb     r3, [r3] 
+05795e  lsls     r3, r3, #0x18 
+057960  asrs     r3, r3, #0x18 
+057962  adds     r0, r3, #0 
+057964  bl       #0x17e150 
+057968  bl       #0x17e890 
+05796c  bl       #0x158172 
+057970  adds     r3, r7, #0 
+057972  subs     r3, #0x10 
+057974  ldr      r3, [r3] 
+057976  adds     r3, #0xc 
+057978  adds     r0, r3, #0 
+05797a  movs     r1, #7 
+05797c  movs     r2, #1 
+05797e  movs     r3, #1 
+057980  bl       #0x175b98 
+057984  bl       #0x158172 
+057988  lsls     r0, r5, #0x12 
+05798a  movs     r0, r0 
+05798c  lsls     r4, r5, #0x12 
+05798e  movs     r0, r0 
+057990  ldr      r6, [sp, #0xa0] 
+057992  movs     r0, r0 
+057994  ldr      r4, [sp, #0x1c4] 
+057996  movs     r0, r0 
+057998  ldr      r4, [sp, #0x1c0] 
+05799a  movs     r0, r0 
+05799c  lsls     r5, r4, #6 
+05799e  movs     r0, r0 
+0579a0  bl       #0x18578c 
+0579a4  adds     r2, r0, #0 
+0579a6  movs     r3, #1 
+0579a8  str      r3, [r2, #0xc] 
+0579aa  bl       #0x18578c 
+0579ae  adds     r3, r0, #0 
+0579b0  adds     r0, r3, #0 
+0579b2  adds     r0, #0x10 
+0579b4  ldr      r3, [pc, #0x164]   ; lit@0x57b1c = 0x00000018
+0579b6  add      r3, sl 
+0579b8  ldr      r3, [r3] 
+0579ba  ldr      r1, [r3] 
+0579bc  ldr      r3, [pc, #0x160]   ; lit@0x57b20 = 0x00000484
+0579be  add      r3, sl 
+0579c0  ldr      r3, [r3] 
+0579c2  adds     r2, r3, #0 
+0579c4  adds     r3, r7, #0 
+0579c6  subs     r3, #0x10 
+0579c8  ldr      r3, [r3] 
+0579ca  adds     r3, #0xc 
+0579cc  ldr      r4, [r1, #4] 
+0579ce  adds     r1, r2, #0 
+0579d0  adds     r2, r3, #0 
+0579d2  bl       #0x1a42a4 
+0579d6  movs     r0, #5 
+0579d8  bl       #0x17e150 
+0579dc  movs     r0, #0x3d 
+0579de  bl       #0x17e150 
+0579e2  adds     r3, r7, #0 
+0579e4  subs     r3, #0xc 
+0579e6  ldr      r3, [r3] 
+0579e8  ldr      r1, [pc, #0x138]   ; lit@0x57b24 = 0x000001a5
+0579ea  adds     r3, r3, r1 
+0579ec  ldrb     r3, [r3] 
+0579ee  lsls     r3, r3, #0x18 
+0579f0  asrs     r3, r3, #0x18 
+0579f2  adds     r0, r3, #0 
+0579f4  bl       #0x17e150 
+0579f8  bl       #0x17e890 
+0579fc  bl       #0x158172 
+057a00  adds     r3, r7, #0 
+057a02  subs     r3, #0xc 
+057a04  ldr      r3, [r3] 
+057a06  ldr      r2, [pc, #0x120]   ; lit@0x57b28 = 0x0000030e
+057a08  adds     r3, r3, r2 
+057a0a  adds     r0, r3, #0 
+057a0c  movs     r1, #0 
+057a0e  movs     r2, #0x10 
+057a10  bl       #0x19fb78 
+057a14  adds     r3, r7, #0 
+057a16  subs     r3, #0xc 
+057a18  ldr      r3, [r3] 
+057a1a  movs     r4, #0xc8 
+057a1c  lsls     r4, r4, #2 
+057a1e  adds     r2, r3, r4 
+057a20  movs     r3, #0xa0 
+057a22  lsls     r3, r3, #1 
+057a24  adds     r0, r2, #0 
+057a26  movs     r1, #0 
+057a28  adds     r2, r3, #0 
+057a2a  bl       #0x19fb78 
+057a2e  adds     r3, r7, #0 
+057a30  subs     r3, #0xc 
+057a32  ldr      r3, [r3] 
+057a34  movs     r0, #0xc2 
+057a36  lsls     r0, r0, #2 
+057a38  adds     r2, r3, r0 
+057a3a  movs     r3, #0 
+057a3c  str      r3, [r2] 
+057a3e  adds     r3, r7, #0 
+057a40  subs     r3, #0xc 
+057a42  ldr      r3, [r3] 
+057a44  movs     r1, #0xc1 
+057a46  lsls     r1, r1, #2 
+057a48  adds     r2, r3, r1 
+057a4a  movs     r3, #0 
+057a4c  str      r3, [r2] 
+057a4e  adds     r3, r7, #0 
+057a50  subs     r3, #0xc 
+057a52  ldr      r3, [r3] 
+057a54  movs     r4, #0xc2 
+057a56  lsls     r4, r4, #2 
+057a58  adds     r2, r3, r4 
+057a5a  adds     r3, r7, #0 
+057a5c  subs     r3, #0x10 
+057a5e  ldr      r3, [r3] 
+057a60  adds     r3, #0xa 
+057a62  adds     r0, r2, #0 
+057a64  adds     r1, r3, #0 
+057a66  movs     r2, #4 
+057a68  bl       #0x19f624 
+057a6c  adds     r3, r7, #0 
+057a6e  subs     r3, #0xc 
+057a70  ldr      r3, [r3] 
+057a72  movs     r0, #0xc1 
+057a74  lsls     r0, r0, #2 
+057a76  adds     r2, r3, r0 
+057a78  adds     r3, r7, #0 
+057a7a  subs     r3, #0x10 
+057a7c  ldr      r3, [r3] 
+057a7e  adds     r3, #0xe 

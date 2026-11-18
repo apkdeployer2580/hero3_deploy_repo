@@ -1,0 +1,72 @@
+[package]
+name = "wie_android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+# GameActivity loads System.loadLibrary("main") -> the cdylib must be libmain.so.
+name = "main"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# `release_max_level_info` compiles out every `log::debug!`/`trace!` in the whole
+# dependency graph in release builds — including arm32_cpu's per-instruction
+# tracer's residue and the thousands of debug events in the WIPI layer. Without
+# it each of those still costs an atomic level load + branch at runtime.
+# Level INFO, not WARN: the app's own diagnostics go through `log::info!` and the
+# build script filters with `warn,main=info`.
+log = { version = "^0.4", features = ["release_max_level_info"] }
+async-trait = { version = "^0.1" }
+# Enable tracing's `log` feature so the wie core's tracing events (which
+# otherwise vanish — we set no tracing Subscriber) surface through android_logger
+# to logcat. Diagnostic: lets us see wie-internal errors (e.g. during save load).
+# `release_max_level_info` is the tracing-side twin of the `log` feature above:
+# the wie core emits its per-call WIPI events with `tracing::debug!`, and via the
+# `log` bridge each one was being formatted and thrown away at runtime.
+tracing = { version = "^0.1", features = ["log", "release_max_level_info"] }
+
+# Render path (ported from wie_cli/window.rs). winit brings android-activity
+# (GameActivity) transitively; do NOT depend on android-activity directly.
+winit = { version = "^0.30", features = ["android-game-activity"] }
+softbuffer = { version = "^0.4" }
+
+# Audio (ported from wie_cli/audio_sink.rs). rodio -> cpal -> AAudio on Android.
+# `playback` gives the output device/Player; SamplesBuffer/conversions are core.
+# default-features off avoids pulling the symphonia decoder stack we don't use.
+rodio = { version = "^0.22", default-features = false, features = ["playback"] }
+# Software SoundFont synth for MIDI BGM (Hero3 audio is 100% MIDI/SMAF — no PCM).
+# oxisynth is the only pure-Rust synth that loads SF3 (Vorbis-compressed) fonts
+# like the bundled hero3_ma3.sf3; the `sf3` feature pulls pure-Rust `lewton`.
+oxisynth = { version = "0.1", features = ["sf3"] }
+
+# wie core (same git dep as wie_web -> reuses the existing cargo checkout; the
+# workspace [patch] overrides arm32_cpu with the perf fork under vendor/).
+wie_backend = { git = "https://github.com/dlunch/wie.git" }
+wie_ktf = { git = "https://github.com/dlunch/wie.git" }
+wie_lgt = { git = "https://github.com/dlunch/wie.git" }
+wie_skt = { git = "https://github.com/dlunch/wie.git" }
+wie_j2me = { git = "https://github.com/dlunch/wie.git" }
+wie_util = { git = "https://github.com/dlunch/wie.git" }
+
+# ⛔ rustls / rustls-pki-types / webpki-roots / ring (TLS for the private-server
+# connection, Track C 2026-07-31) WERE HERE and are gone (99차, 2026-09-16): the app is
+# 100 % offline and opens no socket at all — see `network.rs`.
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = { version = "^0.14" }
+# ndk 0.9 matches what winit/android-activity/cpal already resolve; used for the
+# AssetManager returned by AndroidApp::asset_manager() (bundled game zip).
+ndk = { version = "^0.9" }
+# JNI call to Activity.setRequestedOrientation() for the portrait/landscape
+# toggle. ndk-context (populated by android-activity before android_main) hands
+# us the JavaVM + Activity jobject.
+jni = { version = "^0.21" }
+ndk-context = { version = "^0.1" }
+
+[lints.rust]
+# `--cfg hero3_vanilla` is set by build_android.ps1 from android_app/flavor.properties
+# (BRANCHES.md, `src/flavor.rs`), not by a cargo feature — declare it or every build warns
+# `unexpected_cfgs`.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(hero3_vanilla)'] }

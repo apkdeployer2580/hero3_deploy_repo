@@ -1,0 +1,24 @@
+# 의상 9 — 하드코어 엔딩 보상 · 케이 전용 (175차: 기본 지급 → 하드코어 엔딩 보상). 169차: 사용자 참고 그림 2 (은발 포니테일 · 진홍 근위대 롱코트 · 금 견장 · 보랏빛 검).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/imperial_guard.py 가 프레임마다 그린다(재채색 없음).
+set            = 제국근위대
+acquire        = clear.hard
+hero           = kei
+helmet         = 제국근위대 머리
+helmet.desc    = 길게 묶어 내린 은발
+armor          = 제국근위대 상의
+armor.desc     = 금 견장의 진홍 근위대 코트
+gloves         = 제국근위대 장갑
+gloves.desc    = 금 소맷단과 흰 장갑
+shoes          = 제국근위대 하의
+shoes.desc     = 붉은 바지와 검은 장화
+weapon         = 제국근위대 무기
+weapon.desc    = 근위대의 의장 무기
+weapon.spear   = 제국근위대 창
+weapon.sword   = 제국근위대 검
+weapon.knife   = 제국근위대 손톱
+weapon.dark    = 제국 흑마법진
+weapon.holy    = 제국 성마법진
+shield         = 제국근위대 방패
+shield.desc    = 제국 문장을 새긴 방패

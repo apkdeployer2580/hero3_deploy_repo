@@ -1,0 +1,101 @@
+{
+ "region": "connection lifecycle + receive pump + heartbeat (fo 0x7dfb8, 0x7e3b4-0x7e520, 0x7e5ac, 0x7e63c-0x7e760, 0x7eb08-0x7ebd0)",
+ "summary": "## Hero3 net lifecycle — state machine (STATICALLY proven from client.bin)\n\nAll HAL I/O goes through a `bx rN` veneer table at fo 0xa4290+ (`0xa4294 bx r0`, `0xa42a0 bx r3`, `0xa42a4 bx r4`), so every `bl 0x1a42xx` is a **virtual call through a vtable method** on the net-HAL singleton `objA = *(sl+0xa48)`. **Decisive cross-check: vtable_byte_offset/4 == the grounded WIPI net-slot number for all five calls** — vtable[8]/4=slot2 socket, vtable[4]/4=slot1 htons, vtable[0x34]/4=slot13 setReadCB, vtable[0x78]/4=slot30 connect, vtable[0x80]/4=slot32 recv, vtable[0x84]/4=slot33 close. This independently re-derives session-1's slot table and locks the whole model HIGH.\n\n### The connection context `netctx = *(sl+0x9d0)` (field map, all PROVEN)\n- `+0x00/+0x04` (u64): unknown. Set to 0 by success_handler (0x7eb1e), set to -1 by teardown (0x7e504). **No reader found in-region → semantics UNKNOWN (LOW candidate: connect-time baseline or a request/response guard).**\n- `+0x08/+0x0c` (u64): **heartbeat deadline** = absolute ms. Set to now+5000 by success (0x7eb40) and by heartbeat-fire (0x7ebac). Zeroed by teardown.\n- `+0x10` (s32): **socket fd**. Written from socket() ret (0x7e3ec), read as fd arg to connect/recv/close, set to -1 on teardown (0x7e52c).\n- `+0x14` (u8): **connected flag**. 1=connected (success 0x7eb24), 0=down (teardown 0x7e50c). Gates recv_pump/heartbeat/idle-check.\n\nOther globals: `*(sl+0xa2c)`=u64 **idle deadline** (now+300000, 5min); `*(sl+0x814)`→u8 **rx-ready flag** (gates recv_pump each tick, set 1 when data arrives, cleared on WOULDBLOCK/teardown); `*(sl+0xa44)`→u8 **setReadCB-armed flag**; `*(sl+0xa3c)`→rxstate holder→current frame buffer `RING`; `*(sl+0xa38)`=**4-slot ring array** (`[+1]`=u8 write index mod 4, slots at `[idx*4+4]`); `*(sl+0x904)`=server A/B select byte; `*(sl+0xa50)`/`*(sl+0xa60)`=server IP strings (A/B); `*(sl+0xa54)`=htons obj; `*(sl+0xa58)`=connect-cb ptr(=connect_result_cb 0x7e4b0); `*(sl+0xa5c)`=\"BILLSOCK\" name; `*(sl+0xa64)`=read-cb ptr.\n\n### RING (receive frame buffer) layout — PROVEN\n`RING+0x08`(u16)=frame_len (parsed, **truncated to low 16 bits** of the u32 header); `RING+0x0a`(u16)=fill (bytes accumulated); `RING+0x0c..`=data (starts with the 4-byte LE length header, cap 1024). recv writes to `RING+0x0c+fill`, maxlen `1024-fill`.\n\n### STATE MACHINE\n```\nDISCONNECTED  (netctx[0x14]=0, fd=-1)\n   │  [external trigger fires netconnect_cb(r0)]  fo 0x7e3b4\n   │    r0!=0 → teardown(1) → DISCONNECTED\n   │    fd = socket(vt[8], dom=2, type=1);  fd<0 → teardown(0)\n   │    sel=*(sl+0x904):  sel!=0 → addr=*(sl+0xa50), port=htons(8091=0x1f9b)\n   │                      sel==0 → addr=*(sl+0xa60), port=htons(2903=0x0b57)\n   │    connect(vt[0x78], fd, addr, port, \"BILLSOCK\", cb=connect_result_cb, param=fd)\n   │    ret<0 && ret!=-19 → teardown(1);  ret==-19(WOULDBLOCK) → OK (async)\n   ▼\nCONNECTING  (fd set, connected=0, awaiting async cb)\n   │  connect_result_cb(_, result)  fo 0x7e4b0\n   │    result!=0 → teardown(1) → DISCONNECTED\n   │    result==0 → success_handler\n   ▼\nCONNECTED  (success_handler fo 0x7eb08)\n   │    netctx[0]/[4]=0; netctx[0x14]=1; firstsend=handshake(bl 0x56a08 → 01 01 02);\n   │    netctx[8]/[0xc] = now+5000\n   │\n   │  ── per game-loop tick (7 sites, e.g. 0x649a0), ordered:\n   │     if(*(sl+0x814)) recv_pump(0x7e63c); rx_dispatch(0x56a40); heartbeat(0x7eb60); idle_check(0x7dfb8)\n   │\n   │  recv_pump: n = recv(vt[0x80], fd, RING+0xc+fill, 1024-fill)\n   │     n==-19 → re-arm setReadCB(vt[0x34], fd, rxcb, 0); *(sl+0xa44)=1\n   │     n<=0   → teardown(0)  → DISCONNECTED (peer closed)\n   │     n>0    → fill+=n; *(sl+0x814)=1; if fill>3 read u32 LE len@RING+0xc→frame_len(u16);\n   │              if fill>=frame_len → push frame ptr into 4-slot ring[widx]; widx=(widx+1)%4;\n   │                                    alloc fresh RING (0x7e0e4)\n   │  heartbeat: if now>netctx[8]/[0xc] → send 00 0a (framed 06 00 00 00 | 00 0a); deadline=now+5000\n   │  idle_check: if now>*(sl+0xa2c)(=activity+300000) → teardown(0) + msg \"무작동 5분 경과\" (0x175b98)\n   ▼\n(teardown 0x7e4c4): *(sl+0x814)=0; *(sl+0xa44)=0; netctx[0]/[4]=-1; netctx[0x14]=0;\n   netctx[8]/[0xc]=0; if fd>=0 close(vt[0x84], fd); fd=-1; ring head/tail(+8/+0xa)=0;\n   TXbuf len=4; reset(0x7ea84, 0x7e9d4)  → DISCONNECTED\n```\n\n### Framing (confirmed, both dirs): `[u32 LE total_len incl. 4B header][payload]`. Length read at frame offset 0 (recv_pump 0x7e6d0: `ldr [RING+0xc]`), stored truncated to u16 → **effective max frame 0xffff**. Frame complete when fill>=len; pushed to 4-slot ring (mod-4 index, 0x7e70a). The ≥4-byte gate (`fill<<16 <= 3<<16`) at 0x7e6c2 requires the header before parsing.\n\n### Two independent timers (both PROVEN)\n- **5s heartbeat**: netctx[8]/[0xc]; literal 0x1388=5000 at 0x7eb58/0x7ebd0; fires 00 0a.\n- **5min idle**: `*(sl+0xa2c)`; literal 0x493e0=300000 (unique in binary, fo 0x7dfb0); reset to now+300000 by 0x7df70 (single caller 0x5afe2 = an activity/input handler); expiry → teardown(0)+message.\n\n### Async wiring (PROVEN): netconnect_cb (0x7e3b4) and connect_result_cb (0x7e4b0) have **0 BL callers** — they are passed as HAL callback pointers (connect_result_cb = connect arg4 `*(sl+0xa58)`). success_handler (0x7eb08) is called from exactly one site: 0x7e4be inside connect_result_cb's result==0 branch.",
+ "claims": [
+  {
+   "statement": "HAL calls are virtual dispatch via a bx-rN veneer table; vtable_offset/4 equals the WIPI net-slot number, independently confirming slot2=socket, slot30=connect, slot13=setReadCB, slot32=recv, slot33=close.",
+   "evidence": "veneers fo 0xa4294 'bx r0', 0xa42a0 'bx r3', 0xa42a4 'bx r4'. socket: 0x7e3d6 'ldr r3,[r3,#8]'(vt[8]=slot2) then 0x7e3da bl 0x1a42a0(=bx r3). connect: 0x7e438 'ldr r4,[r1,#0x78]'(vt[0x78]/4=30) then 0x7e440 bl 0x1a42a4(=bx r4). recv: 0x7e684 'adds r3,#0x80'/0x7e68a 'ldr r3,[r3]'(vt[0x80]/4=32) then 0x7e690 bl. close: 0x7e520 'adds r3,#0x84'(/4=33). setReadCB: 0x7e730 'ldr r3,[r2,#0x34]'(/4=13).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "netconnect_cb (0x7e3b4) creates the socket, selects server A/B, resolves the IP, and issues connect(); errors route to teardown(1); a -19 WOULDBLOCK return is treated as success (async pending).",
+   "evidence": "0x7e3d4 'movs r0,#2';0x7e3d8 'movs r1,#1' → socket(2,1); 0x7e3e2 'blt' fd<0→teardown; 0x7e3ec 'str r0,[r3,#0x10]' fd→netctx. 0x7e440 connect. 0x7e454 'movs r3,#0x13; rsbs' (-19) '0x7e458 cmp r0,r3; beq 0x7e44a' WOULDBLOCK→return-ok; else 0x7e45c 'movs r0,#1; bl 0x17e4c4' teardown(1).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Server select: byte *(sl+0x904)==0 uses addr *(sl+0xa60) with port 2903 (0x0b57); !=0 uses addr *(sl+0xa50) with port 8091 (0x1f9b). Port is byte-swapped via htons=vtable[4]. IPs are dotted-decimal strings parsed by inet_aton at 0x7e5ac.",
+   "evidence": "0x7e3f4 'ldrb r3,[r3]';0x7e3f8 'beq 0x17e464'. B branch 0x7e468 addr=*(sl+0xa60), 0x7e47a lit 0x00000b57=2903. A branch 0x7e3fe addr=*(sl+0xa50), lit@0x7e49c=0x00001f9b=8091. htons: 0x7e40e 'ldr r3,[r3,#4]'(vt[4]) 0x7e412 bl. resolver 0x7e5ac loops parsing digits, tests '.'(0x2e via 0xb8<<0x16) at 0x7e5f8, returns packed 4-byte IP or 0.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "connect_result_cb (0x7e4b0) is the async connect callback (=connect arg4 *(sl+0xa58), never BL-called): result==0 dispatches to success_handler, result!=0 to teardown(1).",
+   "evidence": "find_callers 0x7e4b0 = 0 BL callers. 0x7e4b2 'cmp r1,#0';0x7e4b4 'beq 0x17e4be'; else 0x7e4b6 'movs r0,#1; bl 0x17e4c4' teardown(1). success path 0x7e4be 'bl 0x17eb08'. connect passes cb at 0x7e432 'str r2,[sp]' where r2=*(sl+0xa58).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "success_handler (0x7eb08) marks connected, sends the handshake first-packet via 0x56a08, and arms the 5s heartbeat deadline.",
+   "evidence": "0x7eb1e 'str r3,[r5]'/0x7eb20 'str r4,[r5,#4]' netctx[0..8]=0; 0x7eb24 'strb r3,[r5,#0x14]' connected=1; 0x7eb26 'bl 0x156a08' (fo 0x56a08 = handshake sender, template 01 01 02); 0x7eb34 'bl 0x1a4294' getMillis; 0x7eb38 lit 0x1388=5000; 0x7eb40 'str r3,[r5,#8]'/0x7eb42 '[r5,#0xc]' deadline=now+5000.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "receive pump (0x7e63c): recv into RING+0xc+fill (cap 1024); -19→re-arm setReadCB and set *(sl+0xa44)=1; <=0→teardown(0) (peer closed); >0→accumulate, parse u32 LE length header once fill>3, and on complete frame push pointer into the 4-slot ring with mod-4 index, then allocate a fresh buffer.",
+   "evidence": "0x7e688 'lsls r2,r2,#3'(0x80<<3=1024) 0x7e688 'subs r2,r2,r4'(1024-fill) recv. 0x7e6a4 'cmp r0,r3(-19); beq 0x17e724'(re-arm). 0x7e6aa 'ble 0x17e71c'→0x7e71e teardown(0). 0x7e6c2 'cmp r3(fill<<16),r1(3<<16); ble' need>=4B. 0x7e6d0 'ldr r3,[r5,#4]'(len@RING+0xc) 0x7e6d2 'strh r3,[r7,#8]'. complete: 0x7e6e2 'blt' fill<len wait; 0x7e70a 'subs r3,r2,r3' widx=(idx+1)%4, 0x7e70c 'strb r3,[r0,#1]'; 0x7e70e 'bl 0x17e0e4' alloc.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "heartbeat (0x7eb60): only when connected; when now exceeds netctx[8]/[0xc] it sends 00 0a (framed as 06 00 00 00 | 00 0a via put_u8/put_u8/flush) and re-arms the deadline to now+5000.",
+   "evidence": "0x7eb72 'ldrb r3,[r5,#0x14]; beq return'. 0x7eb84 'ldr r2,[r0,#0x60]' now_hi vs 0x7eb82 'ldr r3,[r5,#0xc]'; 0x7eb8e/0x7eb90 lo compare; 0x7ebb0 'movs r0,#0; bl 0x17e150'(put_u8 0), 0x7ebb6 'movs r0,#0xa; bl 0x17e150'(put_u8 0x0a), 0x7ebbc 'bl 0x17e890'(flush). deadline reset 0x7ebac/0x7ebae.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "5-minute idle timeout: activity resets *(sl+0xa2c) to now+300000 (0x7df70, unique 0x493e0 literal at fo 0x7dfb0); every tick idle_check (0x7dfb8) fires teardown(0)+a UI message when connected and now passes the deadline.",
+   "evidence": "0x7df90 lit 0x000493e0=300000; 0x7df94 'adds r3,r3,r0'(now+); 0x7df98 'str r3,[r5]' r5=*(sl+0xa2c). check: 0x7dfce 'ldrb r3,[r3,#0x14]; beq return'; 0x7dfee 'ldr r2,[r3,#4]' deadline vs now; 0x7dffe 'movs r0,#0; bl 0x17e4c4' teardown(0); 0x7e00a 'movs r1,#5'..0x7e010 'bl 0x175b98' message. reset single caller find_callers 0x7df70 → 0x5afe2.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Per-tick network pump order is fixed and driven from ~7 game-state loops: gate recv_pump on *(sl+0x814), then rx_dispatch(0x56a40), then heartbeat, then idle_check.",
+   "evidence": "pump site 0x64990: 0x64994 'ldr r3,[sl+0x814]';0x6499a 'ldrb;cmp;beq 0x1649a4'; 0x6499e-0x649a0 'bl 0x17e63c'(recv_pump); 0x649a4 'bl 0x156a40'(rx_dispatch); 0x649aa 'bl 0x17eb60'(heartbeat); 0x649ae 'bl 0x17dfb8'(idle_check). find_callers 0x7e63c=8 sites, 0x7eb60=7 sites, mostly paired.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "teardown (0x7e4c4, arg=silent-flag) fully resets net state: clears rx flags, invalidates fd (-1) via close(vtable[0x84]) when open, zeros connected/heartbeat-deadline, resets the ring head/tail and TX buffer length to 4. arg!=0 forces teardown; arg==0 is graceful (only if currently connected).",
+   "evidence": "0x7e4d8 'strb r2,[r3]'(*(sl+0x814)=0); 0x7e4e2 (*(sl+0xa44)=0); 0x7e4e6 'bne 0x17e59e'(force vs graceful gate); 0x7e504/6 netctx[0]/[4]=-1; 0x7e50c connected=0; 0x7e522/0x7e524 'bl 0x1a42a0' close(fd); 0x7e52c netctx[0x10]=-1; 0x7e54c/0x7e54e ring +8/+0xa=0; 0x7e564 'strh r2(4),[r3,#8]' TXlen=4.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Frame length is stored/compared as a signed 16-bit value, so declared frame length is effectively capped at 0xffff even though the on-wire header is u32.",
+   "evidence": "0x7e6d0 'ldr r3,[r5,#4]' reads full u32 but 0x7e6d2 'strh r3,[r7,#8]' keeps low 16b; comparison 0x7e6da 'lsls r3,r1,#0x10; asrs r3,r3,#0x10'(sign-extend16) vs fill at 0x7e6d8 'ldrsh r2,[r5,r3]'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "netctx +0x00/+0x04 (u64) is written (0 on success, -1 on teardown) but no reader was located within the lifecycle/recv/heartbeat region; its purpose is unproven.",
+   "evidence": "success 0x7eb1e/0x7eb20 store 0; teardown 0x7e504/0x7e506 store -1 (r3=-1,r4=asr(r3,31)). recv_pump/heartbeat/idle read only +0x08..+0x14. No load of netctx[0]/[4] observed in disassembled ranges.",
+   "confidence": "LOW"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "0x7ebbc",
+   "template": "06 00 00 00 00 0a",
+   "meaning": "Heartbeat / keep-alive, sent every 5s while connected. cat=0x00, op=0x0a. No body. The 06 00 00 00 is the u32 LE total length (includes the 4-byte header).",
+   "field_notes": "Emitted by heartbeat() at fo 0x7eb60: put_u8(0x00)@0x7ebb0, put_u8(0x0a)@0x7ebb6, flush@0x7ebbc writes total_len at buf+0xc. Gated on netctx[0x14]==1 and now>netctx[8]/[0xc]; deadline re-armed to now+5000. Fully static payload, no runtime fields."
+  },
+  {
+   "site_fo": "0x56a08 (called from success_handler 0x7eb26)",
+   "template": "07 00 00 00 01 01 02",
+   "meaning": "Handshake / first packet, sent once immediately on connection success. cat=0x01, op=0x01, 1 body byte 0x02. (Send-site body is out of this region; template is the session-1 grounded fact for the final BB at 0x56a34.)",
+   "field_notes": "success_handler bl 0x156a08 at fo 0x7eb26 right after setting connected=1. This region PROVES it is the first send after connect; the 01 01 02 byte template itself belongs to the 0x56a08 function (session-1 grounded)."
+  }
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/netconnect_cb.txt",
+  "d:/tmp/wie_app/tools_re/dis/connect_result_cb.txt",
+  "d:/tmp/wie_app/tools_re/dis/recv_pump.txt",
+  "d:/tmp/wie_app/tools_re/dis/recv_tail.txt",
+  "d:/tmp/wie_app/tools_re/dis/success_handler.txt",
+  "d:/tmp/wie_app/tools_re/dis/heartbeat.txt",
+  "d:/tmp/wie_app/tools_re/dis/teardown_resolver.txt",
+  "d:/tmp/wie_app/tools_re/dis/thunks.txt",
+  "d:/tmp/wie_app/tools_re/dis/pump_caller.txt",
+  "d:/tmp/wie_app/tools_re/dis/idle_timeout.txt",
+  "d:/tmp/wie_app/tools_re/dis/idle_msg.txt",
+  "d:/tmp/wie_app/tools_re/dis/idle_reset_caller.txt"
+ ],
+ "open_questions": [
+  "netctx +0x00/+0x04 (u64): written 0 on connect-success and -1 on teardown, but no reader found in the lifecycle/recv/heartbeat region. Candidate meanings (unproven): a 'response-wait' deadline used by the request send sites (matches UI string 서버 응답 기다리는중), or a connect-time baseline. Needs a scan of the 0x56xxx/0x63xxx/0x74xxx send sites for loads of *(sl+0x9d0)+0/+4.",
+  "Which concrete function pointers occupy *(sl+0xa58) (connect cb) and *(sl+0xa64) (read cb)? Strongly inferred as connect_result_cb=0x7e4b0 and a tiny rxcb that sets *(sl+0x814)=1, but the relocation values are runtime-initialized; confirm by locating the initializer that writes these sl globals.",
+  "What sets *(sl+0x814) (rx-ready flag) to 1 to un-gate recv_pump? Presumed to be the setReadCB read-callback (*(sl+0xa64)) firing on socket-readable; the callback body was not disassembled.",
+  "Server A vs B: confirm the runtime IP strings at *(sl+0xa50)/*(sl+0xa60) and what sets the selector byte *(sl+0x904) (0=port2903, !=0=port8091). The known-live server is :8091 (selector!=0).",
+  "The teardown 'reset' helpers 0x7ea84 and 0x7e9d4, and the fresh-buffer allocator 0x7e0e4, were referenced but not disassembled — needed to fully model ring-buffer memory management if the private server must exercise reconnect churn."
+ ]
+}

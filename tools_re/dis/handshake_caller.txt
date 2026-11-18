@@ -1,0 +1,78 @@
+07eac0  adds     r6, r1, #0 
+07eac2  adds     r5, r0, #0 
+07eac4  ldr      r1, [r4] 
+07eac6  ldr      r2, [r4, #4] 
+07eac8  ldr      r3, [pc, #0x34]   ; lit@0x7eb00 = 0x00002328
+07eaca  ldr      r4, [pc, #0x38]   ; lit@0x7eb04 = 0x00000000
+07eacc  adds     r1, r1, r3 
+07eace  adcs     r2, r4 
+07ead0  cmp      r6, r2 
+07ead2  bgt      #0x17eae4 
+07ead4  cmp      r6, r2 
+07ead6  beq      #0x17eae0 
+07ead8  adds     r0, r7, #0 
+07eada  pop      {r3} 
+07eadc  mov      sl, r3 
+07eade  pop      {r4, r5, r6, r7, pc} 
+07eae0  cmp      r5, r1 
+07eae2  bls      #0x17ead8 
+07eae4  movs     r7, #1 
+07eae6  b        #0x17ead8 
+07eae8  cmp      r3, #0 
+07eaea  bne      #0x17ead8 
+07eaec  ldr      r3, [r4] 
+07eaee  cmp      r3, #0 
+07eaf0  bhi      #0x17eab2 
+07eaf2  b        #0x17ead8 
+07eaf4  sbcs     r0, r3 
+07eaf6  movs     r3, r0 
+07eaf8  lsrs     r0, r2, #7 
+07eafa  movs     r0, r0 
+07eafc  movs     r0, r3 
+07eafe  movs     r0, r0 
+07eb00  movs     r3, #0x28 
+07eb02  movs     r0, r0 
+07eb04  movs     r0, r0 
+07eb06  movs     r0, r0 
+07eb08  push     {r4, r5, lr} 
+07eb0a  mov      r5, sl 
+07eb0c  push     {r5} 
+07eb0e  ldr      r3, [pc, #0x3c]   ; lit@0x7eb4c = 0x00034128
+07eb10  mov      sl, r3 
+07eb12  ldr      r3, [pc, #0x3c]   ; lit@0x7eb50 = 0x000009d0
+07eb14  add      sl, pc 
+07eb16  add      r3, sl 
+07eb18  ldr      r5, [r3] 
+07eb1a  movs     r3, #0 
+07eb1c  movs     r4, #0 
+07eb1e  str      r3, [r5] 
+07eb20  str      r4, [r5, #4] 
+07eb22  movs     r3, #1 
+07eb24  strb     r3, [r5, #0x14] 
+07eb26  bl       #0x156a08 
+07eb2a  ldr      r3, [pc, #0x28]   ; lit@0x7eb54 = 0x00000018
+07eb2c  add      r3, sl 
+07eb2e  ldr      r3, [r3] 
+07eb30  ldr      r3, [r3] 
+07eb32  ldr      r0, [r3, #0x70] 
+07eb34  bl       #0x1a4294 
+07eb38  ldr      r3, [pc, #0x1c]   ; lit@0x7eb58 = 0x00001388
+07eb3a  ldr      r4, [pc, #0x20]   ; lit@0x7eb5c = 0x00000000
+07eb3c  adds     r3, r3, r0 
+07eb3e  adcs     r4, r1 
+07eb40  str      r3, [r5, #8] 
+07eb42  str      r4, [r5, #0xc] 
+07eb44  pop      {r3} 
+07eb46  mov      sl, r3 
+07eb48  pop      {r4, r5, pc} 
+07eb4a  movs     r0, r0 
+07eb4c  asrs     r0, r5 
+07eb4e  movs     r3, r0 
+07eb50  lsrs     r0, r2, #7 
+07eb52  movs     r0, r0 
+07eb54  movs     r0, r3 
+07eb56  movs     r0, r0 
+07eb58  asrs     r0, r1, #0xe 
+07eb5a  movs     r0, r0 
+07eb5c  movs     r0, r0 
+07eb5e  movs     r0, r0 

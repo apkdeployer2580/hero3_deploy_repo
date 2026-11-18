@@ -1,0 +1,123 @@
+[workspace]
+resolver = "2"
+
+members = ["wie_web", "wie_tauri", "wie_android", "wie_probe"]
+# `exclude` is what keeps the vendored forks below from being swept in as workspace
+# members: a path dependency living inside the workspace directory becomes one
+# automatically otherwise, which would drag their dev-dependency trees and their host
+# builds into every `cargo build` here. They are dependencies, not parts of this app.
+exclude = ["vendor/arm32_cpu", "vendor/wie", "vendor/softbuffer", "vendor/rustjava", "vendor/smaf", "vendor/smaf_player"]
+
+# Perf fork of the ARM interpreter core (decode LUT + redundant-decode removal).
+# dlunch/wie -> wie_core_arm depends on arm32_cpu; overriding it here applies the
+# optimization to the whole dependency graph without touching the wie git dep.
+[patch."https://github.com/dlunch/arm32_cpu.git"]
+arm32_cpu = { path = "vendor/arm32_cpu" }
+
+# Local fork of RustJava (rev 62cf0c6) — the JVM under wie's java runtime. Vendored for
+# 영웅서기2 (KTF, MClass rpg.RPGHero2): unlike hero3's "Clet" (WIPI-C style, threads never
+# exit), hero2 is a real java MIDlet compiled to ARM and its short-lived worker threads
+# EXIT. On exit the guest frees its own Thread instance, so ThreadStartProxy's cleanup
+# (`alive=false` after detach_thread) walked a freed object -> NoSuchFieldError -> building
+# the exception string on an already-detached thread -> panic at jvm.rs:167 unwrap.
+# Fix lives in vendor/rustjava/java_runtime/src/classes/java/lang/thread.rs (reorder
+# cleanup before detach + tolerate put_field failure). Everything else is pristine.
+#
+# ★ This patch table applies to the WHOLE graph, hero3 included: eight vendor/wie crates
+# take jvm/java_runtime from that git URL, so hero3’s JVM is now built from this fork too.
+# Safe today because the one changed function is unreachable for hero3 — both shipping jars
+# contain zero .class files and nothing in vendor/wie calls java/lang/Thread.start. Re-check
+# that if a guest with real bytecode is ever added.
+[patch."https://github.com/dlunch/RustJava.git"]
+classfile = { path = "vendor/rustjava/classfile" }
+java_class_proto = { path = "vendor/rustjava/java_class_proto" }
+java_constants = { path = "vendor/rustjava/java_constants" }
+java_runtime = { path = "vendor/rustjava/java_runtime" }
+jvm = { path = "vendor/rustjava/jvm" }
+jvm_rust = { path = "vendor/rustjava/jvm_rust" }
+
+# Local fork of the wie core (vendored from the cargo git checkout) so we can fix
+# the KTF save-load read path. Bug: the game reads its save record via WIPI slot 4
+# (MC_dbSelectRecord, mode=2, r3=dest ptr) and never calls stream_read, but wie's
+# select_record_ktf was seek-only and delivered ZERO bytes -> game MD5-validates an
+# empty buffer -> valid saves rejected as "empty slot" (device-confirmed 2026-07-22).
+# Fix lives in vendor/wie/wie_wipi_c/src/api/database.rs::select_record_ktf.
+# Local fork of dlunch/smaf. The SMAF score parser and its MIDI translation layer.
+#
+# `smaf_player::ToneMap::map_program` shipped six hand-written General MIDI stand-ins for
+# tones on Yamaha MA-3's own bank (MSB 0x7c / LSB 0x01), which is the bank this game
+# selects for every melodic channel. That is the right thing to do when the host's
+# SoundFont is a GM bank — and the wrong thing now that `wie_android/assets/hero3_ma3.sf3`
+# carries the MA-3 tones themselves at exactly that bank. Measured over all 19 `bgm*_mf`:
+# the translation made one program unresolvable (`bgm0_mf`, the title theme) and fixed
+# none. The fork deletes those six arms; every other line is upstream. See `★ wie fork`.
+[patch."https://github.com/dlunch/smaf.git"]
+smaf = { path = "vendor/smaf" }
+smaf_player = { path = "vendor/smaf_player" }
+
+[patch."https://github.com/dlunch/wie.git"]
+wie_backend = { path = "vendor/wie/wie_backend" }
+wie_ktf = { path = "vendor/wie/wie_ktf" }
+wie_lgt = { path = "vendor/wie/wie_lgt" }
+wie_skt = { path = "vendor/wie/wie_skt" }
+wie_j2me = { path = "vendor/wie/wie_j2me" }
+wie_util = { path = "vendor/wie/wie_util" }
+wie_core_arm = { path = "vendor/wie/wie_core_arm" }
+wie_jvm_support = { path = "vendor/wie/wie_jvm_support" }
+wie_midp = { path = "vendor/wie/wie_midp" }
+wie_wipi_c = { path = "vendor/wie/wie_wipi_c" }
+wie_wipi_java = { path = "vendor/wie/wie_wipi_java" }
+wie_skvm = { path = "vendor/wie/wie_skvm" }
+
+# Local fork of softbuffer 0.4.8 — the host present path. Its Android backend was doing two
+# things per frame that a 1080x2340 window cannot afford, both on the critical path between
+# `App::redraw` and the compositor:
+#
+#   1. `buffer_mut()` allocated and ZEROED a fresh `vec![0; w * h]` on every call — 10.1 MB
+#      of malloc + memset per frame — which `redraw()` then overwrote in full anyway. The
+#      staging buffer now lives on the surface and is reused, so the steady-state cost is
+#      zero: no allocation, no memset. Safe because the backend reports `age() == 0` and
+#      `redraw()` really does partition the whole window before presenting.
+#   2. `present()` swizzled BGRA->RGBA one byte at a time (four `MaybeUninit::write` calls
+#      per pixel = ~10 M single-byte stores per frame). Now one 32-bit store per pixel.
+#
+# Upstream's own source carries `// TODO: This function is pretty slow this way` on (2).
+# Only `src/backends/android.rs` and two helpers added to `src/util.rs` differ from the
+# published crate; every changed hunk is marked `★ wie fork`, and the swizzle is pinned to
+# the code it replaced by tests in `src/util.rs`. See vendor/softbuffer/Cargo.toml.
+[patch.crates-io]
+softbuffer = { path = "vendor/softbuffer" }
+# Local fork of oxisynth 0.1.0 — the MIDI synth. Its SoundFont loader deep-copies a whole
+# `Instrument` for every preset zone that names one, so GeneralUser.sf3's 324 instruments
+# become 24,155 `InstrumentZone`s instead of 2,482 (9.7x) — about 47 MiB of duplication in
+# a 2 KB-per-zone table. Measured on the low-spec target (Galaxy S9, 3.6 GB, Android 10):
+# native heap 271 MB with the device already 921 MB into swap, and 29차 established that
+# the low-memory killer is the only surviving reason this app gets killed.
+#
+# The fork shares each instrument through an `Arc` behind a per-font cache. `inst` is
+# read-only after load (two call sites, both reads), so nothing else changes: the parsed
+# data, the rendered samples and the audio output are identical. Every changed hunk is
+# marked `★ wie fork`.
+oxisynth = { path = "vendor/oxisynth" }
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+license = "Proprietary"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
+# The whole app is bottlenecked on ONE hot loop (the ARM interpreter's decode +
+# dispatch: ~2.46M guest instructions per rendered field frame). Splitting a crate
+# into parallel codegen units costs inlining and register allocation quality
+# exactly there, and the interpreter lives in a single crate so there is nothing
+# to parallelize away. Trade build time for that loop.
+# NB: deliberately NOT `panic = "abort"` — it breaks `cargo test` and this app
+# unwinds across the JNI boundary.
+# Measured on this host, three interleaved runs of the headless probe (median guest
+# instructions/second, 1200 frames of real field play): 106.5 M with one unit vs
+# 102.2 M with the default 16. Small but real, and free at run time.
+codegen-units = 1

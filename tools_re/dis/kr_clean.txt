@@ -1,0 +1,14 @@
+0x48c/PHONE-auth         fo=0x0a9600  슬롯 정보 요청중입니다.
+0x490/SMS                fo=0x0a9618  SMS 요청중입니다.
+0x494/payload            fo=0x0a962c  SMS HERO3
+0x498                    fo=0x0a9638  공지사항 요청중입니다.
+0x49c/savefile           fo=0x0a9650  ./Hero3SlotSave
+WAIT@0xaa880             fo=0x0aa880  서버 응답 기다리는중
+cashshop@0xaa8d0         fo=0x0aa8d0  캐시템 구입중입니다.;(강제 종료시 아이템이 사라질 수 있습니다.)
+warehouse-full@0xa9fe9   fo=0x0a9fe9  창고가 가득찼습니다.
+idle5min@0xab1c0         fo=0x0ab1c0  무작동 5분 경과하였습니다. 서버와의 접속이 끊어졌습니다.
+conn-closed@0xaa837      fo=0x0aa837  연결이 종료되었습니다.
+conn-fail@0xaa807        fo=0x0aa807  접속할 수 없습니다. 잠시후 시도해주세요.
+money-down@0xaa751       fo=0x0aa751  저장중입니다.
+orb@0xaa8bc              fo=0x0aa8bc  돈 내리기 중입니다.
+save-slot@0xaa910        fo=0x0aa910  오브 결합중입니다.

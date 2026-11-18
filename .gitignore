@@ -1,0 +1,57 @@
+/target
+.vscode
+wie_web/dist
+**/node_modules
+# --- native-app build artifacts / machine-specific / logs (added for hero3NativeAPP push) ---
+**/target/
+*.log
+*.err
+*.apk
+deser_dump.txt
+/android_app/.gradle/
+/android_app/build/
+/android_app/app/build/
+/android_app/app/.cxx/
+/android_app/local.properties
+/android_app/app/src/main/jniLibs/
+**/__pycache__/
+
+# Standalone selftest binaries (rustc --edition 2021 --test <x>_selftest.rs -o …).
+# ~7.5 MB each and rebuilt on demand — they are output, not source.
+/t?.exe
+/tt_*.exe
+# The packaged game archive and its pristine copy ARE in this repository (the build
+# embeds the first, the asset tools rebuild from the second). The scratch copies the
+# asset tools drop next to them are not.
+hero3_fixed.zip.*
+# ★ The same rule for ANY game archive under dist/: carrier download packages (the
+# `[KT]…[01.00.08].zip` KT build rode into ffa16e1 by mistake and was untracked on
+# 2026-09-20 — it is still in history) and bare jars are licensed content too. dist/ is
+# for the signed APK (ignored above via *.apk) and its README, nothing else.
+dist/*.zip
+dist/*.jar
+# ★ Signing keys. They are configured from OUTSIDE the repo (env, or
+# %USERPROFILE%\.gradle\gradle.properties) precisely so none of this can ever be
+# committed — these patterns are the second line of defence. A leaked release key
+# lets anyone ship an "update" to installed copies.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+android_app/asset_backup/*
+!android_app/asset_backup/hero3_fixed.zip.orig
+map_gallery/
+
+# ★ Claude Code's git worktrees. NEVER tracked (2026-09-13).
+#
+# `881857b` swept these in with a `git add -A` and they have been noise ever since:
+# they are gitlinks (mode 160000) with **no `.gitmodules`**, so git records a commit
+# SHA it has no URL for — a fresh `clone` gets an EMPTY directory there, and every
+# branch a worktree advances (e.g. `vanilla` on a release) leaves the main checkout
+# permanently "modified". Untracking costs nothing: the worktrees keep working, and
+# `git worktree list` is where they are actually registered.
+.claude/worktrees/
+
+# 129차: a scratch copy of the shipped binary.mod (md5 6a352944…, identical to tools_re/_binary.mod) — local tooling only
+/_scratch_binary.mod

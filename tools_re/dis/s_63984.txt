@@ -1,0 +1,50 @@
+063948  subs     r3, #0x14 
+06394a  ldr      r3, [r3] 
+06394c  cmp      r3, #0 
+06394e  beq      #0x16399c 
+063950  movs     r0, #5 
+063952  bl       #0x17e150 
+063956  movs     r0, #4 
+063958  bl       #0x17e150 
+06395c  adds     r3, r7, #0 
+06395e  subs     r3, #0x10 
+063960  ldr      r1, [r3] 
+063962  adds     r3, r7, #0 
+063964  subs     r3, #0x16 
+063966  ldrb     r3, [r3] 
+063968  lsls     r3, r3, #0x18 
+06396a  asrs     r2, r3, #0x18 
+06396c  movs     r3, #0x14 
+06396e  muls     r3, r2, r3 
+063970  adds     r3, r3, r1 
+063972  movs     r2, #0xdc 
+063974  lsls     r2, r2, #1 
+063976  adds     r3, r3, r2 
+063978  ldr      r4, [r3, #4] 
+06397a  ldr      r3, [r3] 
+06397c  adds     r1, r4, #0 
+06397e  adds     r0, r3, #0 
+063980  bl       #0x17e300 
+063984  bl       #0x17e890 
+063988  ldr      r3, [pc, #0x48]   ; lit@0x639d4 = 0x000007ec
+06398a  add      r3, sl 
+06398c  ldr      r3, [r3] 
+06398e  adds     r0, r3, #0 
+063990  movs     r1, #3 
+063992  movs     r2, #1 
+063994  movs     r3, #0 
+063996  bl       #0x175b98 
+06399a  b        #0x163b3c 
+06399c  ldr      r3, [pc, #0x38]   ; lit@0x639d8 = 0x000007f0
+06399e  add      r3, sl 
+0639a0  ldr      r3, [r3] 
+0639a2  adds     r0, r3, #0 
+0639a4  movs     r1, #7 
+0639a6  movs     r2, #1 
+0639a8  movs     r3, #1 
+0639aa  bl       #0x175b98 
+0639ae  b        #0x163b3c 
+0639b0  lsls     r5, r4, #6 
+0639b2  movs     r0, r0 
+0639b4  lsls     r0, r4, #0x1f 
+0639b6  movs     r0, r0 

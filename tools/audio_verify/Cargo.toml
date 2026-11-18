@@ -1,0 +1,18 @@
+[package]
+name = "hero3_audio_verify"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+log = "0.4"
+rodio = { version = "=0.22.2", default-features = false, features = ["playback"] }
+oxisynth = { path = "../../vendor/oxisynth", features = ["sf3"] }
+smaf_player = { path = "../../vendor/smaf_player" }
+
+[profile.dev]
+opt-level = 2
+
+[profile.test]
+opt-level = 2

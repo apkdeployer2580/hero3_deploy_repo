@@ -1,0 +1,94 @@
+{
+ "region": "WAIT / error UI state machine — how a server response advances the client past \"서버 응답 기다리는중\" after handshake 01 01 02",
+ "summary": "## Model (all statically proven from client.bin)\n\n**The \"network session\" object.** A singleton app pointer is `APP = *(sl+0x444)` (getter `0x14ad10` fo4ad10; also `0x10d53c`). The online-session sub-object is `NET = APP + 0xa3ac`. Every net function computes `NET` this way (handshake sender fo56a16, dispatch fo56c2c, state-setter fo75cfc, render dispatcher fo5aeb4).\n\n**Two state fields drive everything:**\n- **`NET+0x9c` = screen/render state** (absolute `APP+0xa448`). THIS is the wait-flag.\n- `NET+0x38` = login/pending-operation sub-state (absolute `APP+0xa3e4`).\n\n**Per-frame render dispatcher `0x15ae8c` (fo5ae8c)** does two indexed table-calls:\n1. `updateTable[*(sl+0x568)][NET+0x38](APP)`  (fo5aec6, index = NET+0x38)\n2. `renderTable[*(sl+0x6a8)][NET+0x9c](APP)`  (fo5aee6→fo5aef4 `adds r3,#0x9c; ldr; lsl#2`, index = **NET+0x9c**)\n\nBoth tables live in BSS and are filled at runtime by constructor `0x15a600`. The constructor stores `renderTable[i] = *(sl+0x6ac + i*4)`: **table[2]=conn-terminated render(fo729d4), table[3]=WAIT render(fo72b18), table[4]=msg render(fo72cbc)** (fo5a6ce/6de/6ee). The WAIT render fo72b18 draws the string at `sl+0x9a8` = `서버 응답 기다리는중` (fo72c46). ⇒ **`NET+0x9c == 3` renders the WAIT screen.**\n\n**How WAIT is SET.** Handshake sender `0x156a08` (fo56a08): calls state-setter `0x175cdc(3)` (fo56a1c, r0=3), then emits `01 01 02` + flush. State-setter `0x175cdc(mode)` (fo75cdc): `memset(NET+0xa0,0,0x100)` (clears 256-byte message buffer), **`NET+0x9c = mode`** (fo75d26), `NET+0x461 = 0`. So sending the handshake sets `NET+0x9c=3` → WAIT.\n\nAny request sets state 3 the same way; message-popup `0x175b98(str,arg1,_,arg3)` (fo75b98) copies `str`→`NET+0xa0` and sets `NET+0x9c=arg1`. If `NET+0x9c==3` **and** `NET+0xa0` is non-empty, the WAIT render shows the message text instead of the \"기다리는중\" string (fo72b9c-c2 branch).\n\n**Response dispatch `0x156a40` (fo56a40).** rx_peek(fo17e9e8)/rx_pop(fo17ea14) → frame F; reader `M = *peek + 8`. RX pump `0x17e63c` (fo7e63c) stores wire bytes at `M+4` and sets **`M[0] = wire u32 total_len`** (fo7e6d0 `[M+4]→strh [F+8]`), frame complete when received ≥ total_len (fo7e6e0). Dispatch reads `len=M[0]`, guards **`cmp #5; bgt`** (fo56a8e — needs total_len>5 ⇒ ≥2 payload bytes), then `cat=M[8]=payload[0]` (fo56abe), `op=M[9]=payload[1]` (fo56ad0), switches on cat: 0→0x1582e0, **1→0x156bf8**, 4→0x156f3c, 5→0x157394, 0x1f→inline(fo56bb0), 0x64→0x1581a8.\n\n**cat=1 handler `0x156bf8` (fo56bf8)** switches on op:\n- **op=1** → fo56c84: reads account global (sl+0x480), sends `01 3d <16B><…><u32>00`. **Does NOT change NET+0x9c** (stays 3/WAIT) — this just drives the next login packet.\n- **op=0x3d** → fo56d8e: branches on `NET+0x38`: ==9 → send `04 3e <b>`; ==7 → send `1f 00 <9B>`; else → send `01 3e`. Each calls `0x175b98(msg,3,1,_)` → keeps state 3 but shows a message.\n- **op=0x3e** → fo56e6c: allocs socket obj at `NET+0x1a0`, `0x15b10c(obj,FRAME,0xc,-1,…)` opens the game/billing socket from frame payload, then **`0x175cdc(0)`** (fo56efa, r0=0) ⇒ **`NET+0x9c = 0` (WAIT CLEARED)**, and `NET+0x38 = 0xd`.\n- op=6 → no-op.\n\n`NET+0x38` (which op=0x3d branches on) is set = 9 at fo70c90/fo71eea, = 7 at fo6cb00/fo6cba8/fo70d20, = 3 at fo57bfe/fo7125c, = 0xd at fo56f06 — i.e. it is set by whichever online feature the user launched (recovery/warehouse/etc.) before its reply arrives.\n\n## Answer to the region question\n- **(a) wait flag = `NET+0x9c` (= `*(sl+0x444)+0xa448`)**, value **3** = WAIT. Set by `0x175cdc(3)` on request-send; the render dispatcher indexes `renderTable[NET+0x9c]` and `table[3]`=WAIT render. Companion: `NET+0xa0`=message buffer (non-empty overrides WAIT text); `NET+0x38`=pending-op selector.\n- **(b) the reply that CLEARS it = category 1, op 0x3e** (`cat=1/op=0x3e` → `0x175cdc(0)` → `NET+0x9c=0`). op=1/op=0x3d keep state 3 (they advance the protocol / swap the message but do not leave the wait screen).\n- **(c) minimal reply frames** (framing `[u32 LE total_len][payload]`, total_len must be >5):\n  - Natural first reply to `01 01 02` → **`06 00 00 00 01 01`** (cat1/op1). Client reacts by sending `01 3d <account>`; WAIT stays up (still mid-login).\n  - Direct WAIT-clear → **`06 00 00 00 01 3e`** (cat1/op0x3e) → `NET+0x9c` 3→0. Caveat: op=0x3e also feeds the frame to `0x15b10c` to open the game socket; out-of-sequence it reads stale payload bytes (offset payload[4]+, buffer is 0x400B) → likely a benign failed connect, and the state-clear runs unconditionally afterward, but a well-formed server should walk the real chain `01 01` → (recv `01 3d`) → `01 3d` → (recv next) → `01 3e`.\n\nConfidence: state field, table mapping, clear-site, and frame length model are HIGH (byte-grounded). \"op=1 is the server's actual first reply\" is MED (inferred from the client's reaction code; no live capture).",
+ "claims": [
+  {
+   "statement": "The wait/screen-state flag is NET+0x9c (NET = *(sl+0x444)+0xa3ac; absolute APP+0xa448); value 3 selects the WAIT render.",
+   "evidence": "State-setter 0x175cdc fo75d1e-28: 'adds r2,#0x9c; ldr r3=local[-4](mode); str r3,[r2]' writes NET+0x9c=mode. Render dispatcher fo5aef2-04: 'ldr r3,[NET]; adds r3,#0x9c; ldr r3,[r3]; lsls #2; add table; ldr; bl 0x1a429c' indexes renderTable by NET+0x9c. Independent corroboration fo5aff2 (key handler) uses literal 0xa448 = NET+0x9c directly.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "renderTable[3] = WAIT render fo72b18, which draws sl+0x9a8 = '서버 응답 기다리는중'. So NET+0x9c==3 == the WAIT screen.",
+   "evidence": "Constructor fo5a6de-ec: 'r2=*(sl+0x6a8)(table); r3=*(sl+0x6b8); str r3,[r2,#0xc]' => table[3]=*(sl+0x6b8). Slot 0xb32f8(sl+0x6b8)=0x71c2d=(fo72b18-0xeec)|1. Render fo72c46: 'ldr sl+0x9a8; ... bl 0x1a42a4' composes the WAIT string. dump_kr: sl+0x9a8 data slot 0xb35e8 -> string @0xaa880 '서버 응답 기다리는중'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Sending the handshake 01 01 02 sets NET+0x9c=3 (shows WAIT).",
+   "evidence": "Handshake sender fo56a08: 'bl 0x14ad10; r3+=0xa3ac; movs r0,#3; bl 0x175cdc' (fo56a1c) then put_u8(1)x2/put_u8(2)/flush (fo56a22-34). 0x175cdc(3) sets NET+0x9c=3.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The response dispatch reads cat=payload[0]=M[8], op=payload[1]=M[9], where M[0]=wire total_len; guard 'cmp#5;bgt' requires total_len>5 (>=2 payload bytes).",
+   "evidence": "Dispatch fo56a88 'ldrh r3,[M]; ... cmp #5; bgt 0x156ab4' then fo56abe 'ldrb [M+8]'=cat, fo56ad0 'ldrb [M+9]'=op. RX pump fo7e6d0 'ldr r3,[M+4]; strh r3,[F+8]' sets M[0]=wire u32 total_len; fo7e6e0 'cmp cursor,total_len; blt' waits for full frame. cat switch fo56aee-b48: 1->0x156bf8, 4->0x156f3c, 0->0x1582e0, 0x1f->fo56bb0, 5->0x157394, 0x64->0x1581a8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Only cat=1/op=0x3e clears the wait flag: its handler calls 0x175cdc(0) => NET+0x9c=0.",
+   "evidence": "cat=1 handler 0x156bf8 op-switch fo56c6e/56c7c: op==0x3d->fo56d8e, op==0x3e->fo56e6c. op=0x3e handler fo56ef8 'movs r0,#0; bl 0x175cdc' then fo56f04 'movs r3,#0xd; str [NET+0x38]'. 0x175cdc(0) sets NET+0x9c=0. op=1 handler fo56c84 sends 01 3d and never touches NET+0x9c; op=0x3d calls 0x175b98(msg,3,..) keeping state 3.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat=1/op=1 is the natural server reply to the handshake: it makes the client emit the account packet 01 3d.",
+   "evidence": "op=1 handler fo56c84-56d88: loads account global sl+0x480, memset local buf, strncpy(0x1a42a4), digit-format loop, then put_u8(1);put_u8(0x3d);put_bytes(buf,0x10);...;put_u8(0);flush (fo56d1c-88) = template '01 3d <16B><...>00' (matches packet_catalog send site 0x56d88). Reads no incoming payload beyond cat/op.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "NET+0x38 is the pending-operation/login sub-state that op=0x3d branches on; it is set by the feature the user launched before the reply arrives.",
+   "evidence": "op=0x3d handler fo56d94 'ldr [NET+0x38]; cmp #9' (->send 04 3e), fo56dee 'cmp #7' (->send 1f 00), else send 01 3e. Writes to [rY,#0x38] preceded by movs imm: =9 @fo70c90/fo71eea, =7 @fo6cb00/6cba8/70d20, =3 @fo57bfe/7125c, =0xd @fo56f06 (op=0x3e). Render dispatcher also dispatches updateTable[*(sl+0x568)][NET+0x38] (fo5aec6).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op=0x3e additionally opens the secondary (game/billing) socket by feeding the received frame to 0x15b10c, reading payload from offset payload[4]+.",
+   "evidence": "op=0x3e fo56ec0-f6: alloc 0x14B at NET+0x1a0 (vtable[0x54]), 'r1=frame; [sp]=0x99; [sp+4]=9; r2=0xc; r3=-1; bl 0x15b10c'. 0x15b10c fo5b13a-58 dereferences frame->M and reads at M + arg2(0xc) = payload[4]; calls 0x13f504 with 0x2710. State-clear 0x175cdc(0) runs unconditionally after it returns.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "NET = *(sl+0x444)+0xa3ac is a stable global singleton, so NET+0x9c is a fixed ctx offset.",
+   "evidence": "0x14ad10 fo4ad18-24: 'ldr r3,=0x444; add r3,sl; ldr r0,[r3]; bx lr' returns *(sl+0x444). Every net fn adds literal 0xa3ac (fo56a16, fo56c2c, fo75cfc, fo5aeb4, fo72896). Absolute NET+0x9c = *(sl+0x444)+0xa448 matches literal 0xa448 used at fo5aff2.",
+   "confidence": "HIGH"
+  }
+ ],
+ "request_templates": [
+  {
+   "site_fo": "reply->0x156c84 (cat=1 op=1 handler)",
+   "template": "06 00 00 00 01 01",
+   "meaning": "Server ACK of handshake 01 01 02. Client reacts by sending account packet 01 3d <account>. WAIT stays visible (login still pending, NET+0x9c=3).",
+   "field_notes": "total_len=6 (LE 06 00 00 00) INCLUDES the 4-byte header; payload=01 01 = cat 0x01, op 0x01. Must be >5 total_len to pass the dispatch guard (fo56a8e). op=1 reads no further payload, so 2 payload bytes suffice. Extra payload bytes are ignored by this handler."
+  },
+  {
+   "site_fo": "reply->0x156d8e (cat=1 op=0x3d handler)",
+   "template": "06 00 00 00 01 3d",
+   "meaning": "2nd login step. Client branches on NET+0x38 (set by the pending feature): 9=>sends 04 3e <b>, 7=>sends 1f 00 <9B>, else=>sends 01 3e. Shows a message overlay, state stays 3.",
+   "field_notes": "cat 0x01 op 0x3d. Which outbound the client emits depends on NET+0x38, which the feature-launch code set (recovery/warehouse). Pad payload if the client's op=3d path reads more (it does not read incoming payload here — only sl-globals)."
+  },
+  {
+   "site_fo": "reply->0x156e6c (cat=1 op=0x3e handler) — WAIT CLEAR",
+   "template": "06 00 00 00 01 3e",
+   "meaning": "Terminal login reply. Calls 0x175cdc(0) => NET+0x9c=0 (leaves the WAIT screen) and NET+0x38=0xd; also opens the game/billing socket from the frame. This is THE reply that un-sticks the WAIT screen.",
+   "field_notes": "cat 0x01 op 0x3e. 0x15b10c reads connection descriptor at payload offset 4+ (payload[4..]); a minimal 2-byte payload leaves those as stale/zero buffer bytes -> likely a failed connect but the state-clear still runs. For a robust private server, precede this with the op=1 and op=0x3d steps and supply a valid host/port descriptor starting at payload[4]."
+  }
+ ],
+ "artifacts": [
+  "d:/tmp/wie_app/tools_re/dis/dispatch.txt",
+  "d:/tmp/wie_app/tools_re/dis/cat1_handler.txt",
+  "d:/tmp/wie_app/tools_re/dis/wait_ui.txt",
+  "d:/tmp/wie_app/tools_re/dis/handshake_send.txt",
+  "d:/tmp/wie_app/tools_re/dis/state_setter.txt",
+  "d:/tmp/wie_app/tools_re/dis/dispatcher.txt",
+  "d:/tmp/wie_app/tools_re/dis/render_disp.txt",
+  "d:/tmp/wie_app/tools_re/dis/rxpump.txt",
+  "d:/tmp/wie_app/tools_re/dis/rxpump2.txt",
+  "d:/tmp/wie_app/tools_re/dis/rxframe.txt",
+  "d:/tmp/wie_app/tools_re/dis/mksock.txt",
+  "d:/tmp/wie_app/tools_re/find_slotref.py",
+  "d:/tmp/wie_app/tools_re/find_fnptr.py",
+  "d:/tmp/wie_app/tools_re/dump_table.py"
+ ],
+ "open_questions": [
+  "Confirm empirically (device/replay capture) that the real server's FIRST reply to 01 01 02 is cat=1/op=1 vs another op — inferred here only from the client's reaction code.",
+  "Decode 0x15b10c (fo5b10c) fully to define the game-socket connection descriptor layout the op=0x3e frame must carry (payload[4]+: host/port/index), needed for a robust login completion.",
+  "Map cat=4 (0x156f3c) and cat=5 (0x157394) reply handlers — they drive warehouse/cash/orb features and likely also toggle NET+0x9c / NET+0x38; needed to un-stick the non-login online features.",
+  "Enumerate the full renderTable index->state mapping (table[0]=fo7285c idle/close-animation, table[2]=conn-terminated, table[3]=WAIT, table[4]=msg, table[7]=fo72eb4 error) and confirm which error index the 'server 접속 불가'(sl+0x994)/'연결 종료'(sl+0x998) strings map to.",
+  "Determine what sets NET+0x38 to 9 vs 7 at fo70c90/fo6cb00/etc. per feature, so the op=0x3d branch (04 3e / 1f 00 / 01 3e) can be predicted per online operation."
+ ]
+}

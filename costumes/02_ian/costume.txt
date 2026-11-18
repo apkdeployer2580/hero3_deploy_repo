@@ -1,0 +1,23 @@
+# 의상 2 — 노말 엔딩 보상 (하드코어로 넘어가는 순간). hero2 의 「빙해의 검사」 이안을 hero3 판으로.
+# 169차: 사용자 요청으로 재채색 없이 프레임마다 새로 그렸다 — tools_re/costume_atelier/sets/ian.py.
+set            = 빙해의 검사
+acquire        = clear.normal
+helmet         = 이안의 머리
+helmet.desc    = 이안의 헝클어진 은발
+armor          = 이안의 낡은 옷
+armor.desc     = 이안이 입던 낡은 여행복
+gloves         = 이안의 낡은 장갑
+gloves.desc    = 이안이 끼던 가죽 장갑
+shoes          = 이안의 낡은 신발
+shoes.desc     = 이안이 신던 낡은 장화
+weapon         = 이안의 낡은 무기
+weapon.desc    = 이안이 사용한 낡은 무기
+weapon.spear   = 이안의 스피어
+weapon.sword   = 이안의 스워드
+weapon.knife   = 이안의 나이프
+weapon.gun     = 이안의 건
+weapon.rifle   = 이안의 라이플
+weapon.dark    = 이안의 다크스톤
+weapon.holy    = 이안의 홀리스톤
+shield         = 이안의 낡은 방패
+shield.desc    = 이안이 사용한 낡은 방패

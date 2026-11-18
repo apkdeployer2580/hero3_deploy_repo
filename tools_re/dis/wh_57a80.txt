@@ -1,0 +1,33 @@
+057a80  adds     r0, r2, #0 
+057a82  adds     r1, r3, #0 
+057a84  movs     r2, #4 
+057a86  bl       #0x19f624 
+057a8a  adds     r3, r7, #0 
+057a8c  subs     r3, #0xc 
+057a8e  ldr      r3, [r3] 
+057a90  movs     r1, #0xc3 
+057a92  lsls     r1, r1, #2 
+057a94  adds     r2, r3, r1 
+057a96  adds     r3, r7, #0 
+057a98  subs     r3, #0x10 
+057a9a  ldr      r3, [r3] 
+057a9c  adds     r3, #0x12 
+057a9e  adds     r0, r2, #0 
+057aa0  adds     r1, r3, #0 
+057aa2  movs     r2, #2 
+057aa4  bl       #0x19f624 
+057aa8  adds     r3, r7, #0 
+057aaa  subs     r3, #0xc 
+057aac  ldr      r3, [r3] 
+057aae  movs     r2, #0xc3 
+057ab0  lsls     r2, r2, #2 
+057ab2  adds     r3, r3, r2 
+057ab4  ldrh     r3, [r3] 
+057ab6  lsls     r3, r3, #0x10 
+057ab8  asrs     r2, r3, #0x10 
+057aba  adds     r3, r7, #0 
+057abc  subs     r3, #0xc 
+057abe  ldr      r3, [r3] 
+057ac0  movs     r4, #0xc2 
+057ac2  lsls     r4, r4, #2 
+057ac4  adds     r3, r3, r4 

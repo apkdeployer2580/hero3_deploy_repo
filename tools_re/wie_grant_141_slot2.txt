@@ -1,0 +1,168 @@
+# 141차 — 신규 아이템 전부를 SLOT 2 (0-based 1) 의 가방에. 한 폴에 한 줄, 가방이 차면 기다린다.
+slot 1
+cat 00 idx 30   # 템플러헬름
+cat 00 idx 31   # 크루세이더후드
+cat 00 idx 32   # 근위관
+cat 00 idx 33   # 코르버스후드
+cat 00 idx 34   # 붉은마녀헬름
+cat 00 idx 35   # 빙해의투구
+cat 00 idx 36   # 예언자의눈
+cat 00 idx 37   # 장로회의관
+cat 01 idx 36   # 템플러플레이트
+cat 01 idx 37   # 크루세이더코트
+cat 01 idx 38   # 레갈리스법의
+cat 01 idx 39   # 코르버스암살복
+cat 01 idx 3a   # 붉은마녀로브
+cat 01 idx 3b   # 빙해의갑옷
+cat 01 idx 3c   # 멜하르의흉갑
+cat 01 idx 3d   # 율리케의성의
+cat 01 idx 3e   # 광전사의흑갑
+cat 02 idx 30   # 템플러건틀릿
+cat 02 idx 31   # 크루세이더핸드
+cat 02 idx 32   # 레갈리스성갑
+cat 02 idx 33   # 코르버스크로우
+cat 02 idx 34   # 붉은마녀장갑
+cat 02 idx 35   # 빙해의장갑
+cat 02 idx 36   # 집행자의손
+cat 02 idx 37   # 오딘의손길
+cat 02 idx 38   # 키드의발톱
+cat 03 idx 31   # 섬광의군화
+cat 03 idx 32   # 템플러그리브
+cat 03 idx 33   # 크루세이더워커
+cat 03 idx 34   # 근위장화
+cat 03 idx 35   # 코르버스스텝
+cat 03 idx 36   # 붉은마녀신발
+cat 03 idx 37   # 빙해의장화
+cat 03 idx 38   # 바질의발걸음
+cat 04 idx 1f   # 레아의유니콘창
+cat 04 idx 20   # 디미트리의창
+cat 04 idx 21   # 멜페토의공국창
+cat 04 idx 22   # 닉스의수호창
+cat 05 idx 1f   # 이안의송검
+cat 05 idx 20   # 클레르클레이모어
+cat 05 idx 21   # 가면검사의검
+cat 05 idx 22   # 빙해의대검
+cat 06 idx 1f   # 더글라스의밀검
+cat 06 idx 20   # 하인츠의쌍단검
+cat 06 idx 21   # 큐의암살단검
+cat 06 idx 22   # 비스트의송곳니
+cat 07 idx 1f   # 에레보스화승총
+cat 07 idx 20   # 볼프강의호신총
+cat 07 idx 21   # 에이블의밀수총
+cat 07 idx 22   # 검은공장의걸작
+cat 08 idx 1f   # 에레보스공성포
+cat 08 idx 20   # 통일전쟁중포
+cat 08 idx 21   # 토레즈중포
+cat 08 idx 22   # 시즈타이탄주포
+cat 09 idx 1f   # 잊혀진신전의핵
+cat 09 idx 20   # 오딘의코어조각
+cat 09 idx 21   # 일레느의연구석
+cat 09 idx 22   # 게브의파편
+cat 0a idx 1f   # 리파이너의성석
+cat 0a idx 20   # 굴베이그의유산
+cat 0a idx 21   # 테너의성표
+cat 0a idx 22   # 시엔의목소리
+cat 0b idx 1b   # 케네스방패
+cat 0b idx 1c   # 닉스의문장
+cat 0b idx 1d   # 디미트리의방패
+cat 0b idx 1e   # 듀리안의버클러
+cat 0b idx 1f   # 리파이너의가호
+cat 0b idx 20   # 왕국의철벽
+cat 0b idx 21   # 영혼의수호
+cat 0c idx 2a   # 율리케의목걸이
+cat 0c idx 2b   # 레갈리스교단반지
+cat 0c idx 2c   # 엘지스의증표
+cat 0c idx 2d   # 이안의맹세
+cat 0c idx 2e   # 레아의목걸이
+cat 0c idx 2f   # 일레느의각인
+cat 0c idx 30   # 클레르의가보
+cat 0c idx 31   # 굴베이그의탈리스만
+cat 0c idx 32   # 닉스의펜던트
+cat 0f idx 27   # 템플러헬름 조합서
+cat 0f idx 28   # 템플러플레이트 조합서
+cat 0f idx 29   # 템플러건틀릿 조합서
+cat 0f idx 2a   # 템플러그리브 조합서
+cat 0f idx 2b   # 케네스방패 조합서
+cat 0f idx 2c   # 레아의유니콘창 조합서
+cat 0f idx 2d   # 이안의송검 조합서
+cat 0f idx 2e   # 더글라스의밀검 조합서
+cat 0f idx 2f   # 에레보스화승총 조합서
+cat 0f idx 30   # 에레보스공성포 조합서
+cat 0f idx 31   # 잊혀진신전의핵 조합서
+cat 0f idx 32   # 리파이너의성석 조합서
+cat 0f idx 33   # 율리케의목걸이 조합서
+cat 0f idx 34   # 레갈리스교단반지 조합서
+cat 0f idx 35   # 엘지스의증표 조합서
+cat 0f idx 36   # 크루세이더후드 조합서
+cat 0f idx 37   # 크루세이더코트 조합서
+cat 0f idx 38   # 크루세이더핸드 조합서
+cat 0f idx 39   # 크루세이더워커 조합서
+cat 0f idx 3a   # 닉스의문장 조합서
+cat 0f idx 3b   # 디미트리의창 조합서
+cat 0f idx 3c   # 클레르클레이모어 조합서
+cat 0f idx 3d   # 하인츠의쌍단검 조합서
+cat 0f idx 3e   # 볼프강의호신총 조합서
+cat 0f idx 3f   # 통일전쟁중포 조합서
+cat 0f idx 40   # 오딘의코어조각 조합서
+cat 0f idx 41   # 굴베이그의유산 조합서
+cat 0f idx 42   # 근위관 조합서
+cat 0f idx 43   # 레갈리스법의 조합서
+cat 0f idx 44   # 레갈리스성갑 조합서
+cat 0f idx 45   # 근위장화 조합서
+cat 0f idx 46   # 디미트리의방패 조합서
+cat 0f idx 47   # 이안의맹세 조합서
+cat 0f idx 48   # 레아의목걸이 조합서
+cat 0f idx 49   # 일레느의각인 조합서
+cat 0f idx 4a   # 멜페토의공국창 조합서
+cat 0f idx 4b   # 가면검사의검 조합서
+cat 0f idx 4c   # 큐의암살단검 조합서
+cat 0f idx 4d   # 에이블의밀수총 조합서
+cat 0f idx 4e   # 토레즈중포 조합서
+cat 0f idx 4f   # 일레느의연구석 조합서
+cat 0f idx 50   # 테너의성표 조합서
+cat 0f idx 51   # 코르버스후드 조합서
+cat 0f idx 52   # 코르버스암살복 조합서
+cat 0f idx 53   # 코르버스크로우 조합서
+cat 0f idx 54   # 코르버스스텝 조합서
+cat 0f idx 55   # 듀리안의버클러 조합서
+cat 0f idx 56   # 클레르의가보 조합서
+cat 0f idx 57   # 굴베이그의탈리스만 조합서
+cat 0f idx 58   # 닉스의펜던트 조합서
+cat 0f idx 59   # 붉은마녀헬름 조합서
+cat 0f idx 5a   # 빙해의투구 조합서
+cat 0f idx 5b   # 붉은마녀로브 조합서
+cat 0f idx 5c   # 빙해의갑옷 조합서
+cat 0f idx 5d   # 붉은마녀장갑 조합서
+cat 0f idx 5e   # 빙해의장갑 조합서
+cat 0f idx 5f   # 붉은마녀신발 조합서
+cat 0f idx 60   # 빙해의장화 조합서
+cat 0f idx 61   # 리파이너의가호 조합서
+cat 0f idx 62   # 왕국의철벽 조합서
+cat 0f idx 63   # 예언자의눈 조합서
+cat 0f idx 64   # 장로회의관 조합서
+cat 0f idx 65   # 멜하르의흉갑 조합서
+cat 0f idx 66   # 율리케의성의 조합서
+cat 0f idx 67   # 광전사의흑갑 조합서
+cat 0f idx 68   # 집행자의손 조합서
+cat 0f idx 69   # 오딘의손길 조합서
+cat 0f idx 6a   # 키드의발톱 조합서
+cat 0f idx 6b   # 바질의발걸음 조합서
+cat 0f idx 6c   # 섬광의군화 조합서
+cat 0f idx 6d   # 닉스의수호창 조합서
+cat 0f idx 6e   # 빙해의대검 조합서
+cat 0f idx 6f   # 비스트의송곳니 조합서
+cat 0f idx 70   # 검은공장의걸작 조합서
+cat 0f idx 71   # 시즈타이탄주포 조합서
+cat 0f idx 72   # 게브의파편 조합서
+cat 0f idx 73   # 시엔의목소리 조합서
+cat 0f idx 74   # 영혼의수호 조합서
+cat 04 idx 1e   # 리버스피어
+cat 05 idx 1e   # 리버스워드
+cat 06 idx 1e   # 리버나이프
+cat 07 idx 1e   # 리버건
+cat 08 idx 1e   # 리버캐논
+cat 09 idx 1e   # 리버다크스톤
+cat 0a idx 1e   # 리버홀리스톤
+cat 0b idx 1a   # 리버쉴드
+cat 0c idx 28   # 타이탄의 파편
+cat 0c idx 29   # 검은 눈물

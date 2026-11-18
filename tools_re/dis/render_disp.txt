@@ -1,0 +1,215 @@
+05ae80  adr      r3, #0x2b0 
+05ae82  movs     r0, r0 
+05ae84  lsls     r0, r5, #0x14 
+05ae86  movs     r0, r0 
+05ae88  adr      r3, #0x390 
+05ae8a  movs     r0, r0 
+05ae8c  push     {r4, r7, lr} 
+05ae8e  mov      r7, sl 
+05ae90  push     {r7} 
+05ae92  mov      r7, sp 
+05ae94  sub      sp, #0x2c 
+05ae96  ldr      r1, [pc, #0x11c]   ; lit@0x5afb4 = 0x00057da2
+05ae98  mov      sl, r1 
+05ae9a  add      sl, pc 
+05ae9c  subs     r3, r7, #4 
+05ae9e  str      r0, [r3] 
+05aea0  adds     r2, r7, #0 
+05aea2  subs     r2, #8 
+05aea4  subs     r3, r7, #4 
+05aea6  ldr      r3, [r3] 
+05aea8  str      r3, [r2] 
+05aeaa  adds     r2, r7, #0 
+05aeac  subs     r2, #0xc 
+05aeae  adds     r3, r7, #0 
+05aeb0  subs     r3, #8 
+05aeb2  ldr      r3, [r3] 
+05aeb4  ldr      r1, [pc, #0x100]   ; lit@0x5afb8 = 0x0000a3ac
+05aeb6  adds     r3, r3, r1 
+05aeb8  str      r3, [r2] 
+05aeba  bl       #0x10d53c 
+05aebe  adds     r2, r0, #0 
+05aec0  adds     r3, r7, #0 
+05aec2  subs     r3, #0x10 
+05aec4  str      r2, [r3] 
+05aec6  ldr      r3, [pc, #0xf4]   ; lit@0x5afbc = 0x00000568 (reloc-> 0x1454 'Ä\x9d')
+05aec8  add      r3, sl 
+05aeca  ldr      r3, [r3] 
+05aecc  adds     r2, r3, #0 
+05aece  adds     r3, r7, #0 
+05aed0  subs     r3, #0xc 
+05aed2  ldr      r3, [r3] 
+05aed4  ldr      r3, [r3, #0x38] 
+05aed6  lsls     r3, r3, #2 
+05aed8  adds     r2, r3, r2 
+05aeda  subs     r3, r7, #4 
+05aedc  ldr      r3, [r3] 
+05aede  ldr      r2, [r2] 
+05aee0  adds     r0, r3, #0 
+05aee2  bl       #0x1a429c 
+05aee6  ldr      r3, [pc, #0xd8]   ; lit@0x5afc0 = 0x000006a8
+05aee8  add      r3, sl 
+05aeea  ldr      r3, [r3] 
+05aeec  adds     r2, r3, #0 
+05aeee  adds     r3, r7, #0 
+05aef0  subs     r3, #0xc 
+05aef2  ldr      r3, [r3] 
+05aef4  adds     r3, #0x9c 
+05aef6  ldr      r3, [r3] 
+05aef8  lsls     r3, r3, #2 
+05aefa  adds     r2, r3, r2 
+05aefc  subs     r3, r7, #4 
+05aefe  ldr      r3, [r3] 
+05af00  ldr      r2, [r2] 
+05af02  adds     r0, r3, #0 
+05af04  bl       #0x1a429c 
+05af08  adds     r3, r7, #0 
+05af0a  subs     r3, #0xc 
+05af0c  ldr      r3, [r3] 
+05af0e  ldr      r3, [r3, #0x40] 
+05af10  movs     r2, #1 
+05af12  rsbs     r2, r2, #0 
+05af14  cmp      r3, r2 
+05af16  ble      #0x15afac 
+05af18  adds     r3, r7, #0 
+05af1a  subs     r3, #0xc 
+05af1c  ldr      r3, [r3] 
+05af1e  adds     r3, #0x9c 
+05af20  ldr      r3, [r3] 
+05af22  cmp      r3, #0 
+05af24  bne      #0x15afac 
+05af26  adds     r2, r7, #0 
+05af28  subs     r2, #0x18 
+05af2a  ldr      r3, [pc, #0x98]   ; lit@0x5afc4 = 0x0000072c
+05af2c  add      r3, sl 
+05af2e  ldr      r3, [r3] 
+05af30  mov      ip, r3 
+05af32  adds     r3, r2, #0 
+05af34  mov      r2, ip 
+05af36  movs     r4, #6 
+05af38  adds     r0, r3, #0 
+05af3a  adds     r1, r2, #0 
+05af3c  adds     r2, r4, #0 
+05af3e  bl       #0x19f624 
+05af42  adds     r3, r7, #0 
+05af44  subs     r3, #0x10 
+05af46  ldr      r3, [r3] 
+05af48  ldr      r1, [r3] 
+05af4a  adds     r3, r7, #0 
+05af4c  subs     r3, #8 
+05af4e  ldr      r3, [r3] 
+05af50  ldr      r4, [r3, #0x70] 
+05af52  adds     r3, r7, #0 
+05af54  subs     r3, #8 
+05af56  ldr      r3, [r3] 
+05af58  ldr      r3, [r3, #0x74] 
+05af5a  str      r3, [sp] 
+05af5c  adds     r2, r7, #0 
+05af5e  subs     r2, #0x18 
+05af60  adds     r3, r7, #0 
+05af62  subs     r3, #0xc 
+05af64  ldr      r3, [r3] 
+05af66  ldr      r3, [r3, #0x40] 
+05af68  adds     r3, r2, r3 
+05af6a  ldrb     r3, [r3] 
+05af6c  str      r3, [sp, #4] 
+05af6e  movs     r3, #0 
+05af70  str      r3, [sp, #8] 
+05af72  movs     r3, #0 
+05af74  str      r3, [sp, #0xc] 
+05af76  movs     r3, #0 
+05af78  str      r3, [sp, #0x10] 
+05af7a  adds     r0, r1, #0 
+05af7c  movs     r1, #0 
+05af7e  movs     r2, #0 
+05af80  adds     r3, r4, #0 
+05af82  bl       #0x10defc 
+05af86  adds     r3, r7, #0 
+05af88  subs     r3, #0xc 
+05af8a  ldr      r3, [r3] 
+05af8c  adds     r2, r3, #0 
+05af8e  adds     r2, #0x40 
+05af90  ldr      r3, [r2] 
+05af92  adds     r1, r3, #0 
+05af94  adds     r3, #1 
+05af96  str      r3, [r2] 
+05af98  cmp      r1, #4 
+05af9a  ble      #0x15afac 
+05af9c  adds     r3, r7, #0 
+05af9e  subs     r3, #0xc 
+05afa0  ldr      r2, [r3] 
+05afa2  movs     r3, #1 
+05afa4  rsbs     r3, r3, #0 
+05afa6  str      r3, [r2, #0x40] 
+05afa8  bl       #0x10da34 
+05afac  mov      sp, r7 
+05afae  pop      {r3} 
+05afb0  mov      sl, r3 
+05afb2  pop      {r4, r7, pc} 
+05afb4  ldrb     r2, [r4, #0x16] 
+05afb6  movs     r5, r0 
+05afb8  adr      r3, #0x2b0 
+05afba  movs     r0, r0 
+05afbc  lsls     r0, r5, #0x15 
+05afbe  movs     r0, r0 
+05afc0  lsls     r0, r5, #0x1a 
+05afc2  movs     r0, r0 
+05afc4  lsls     r4, r5, #0x1c 
+05afc6  movs     r0, r0 
+05afc8  push     {r7, lr} 
+05afca  mov      r7, sl 
+05afcc  push     {r7} 
+05afce  mov      r7, sp 
+05afd0  sub      sp, #8 
+05afd2  ldr      r3, [pc, #0x78]   ; lit@0x5b04c = 0x00057c66
+05afd4  mov      sl, r3 
+05afd6  add      sl, pc 
+05afd8  subs     r3, r7, #4 
+05afda  str      r0, [r3] 
+05afdc  adds     r3, r7, #0 
+05afde  subs     r3, #8 
+05afe0  str      r1, [r3] 
+05afe2  bl       #0x17df70 
+05afe6  ldr      r3, [pc, #0x68]   ; lit@0x5b050 = 0x000006e4
+05afe8  add      r3, sl 
+05afea  ldr      r3, [r3] 
+05afec  adds     r2, r3, #0 
+05afee  subs     r3, r7, #4 
+05aff0  ldr      r3, [r3] 
+05aff2  ldr      r1, [pc, #0x60]   ; lit@0x5b054 = 0x0000a448
+05aff4  adds     r3, r3, r1 
+05aff6  ldr      r3, [r3] 
+05aff8  lsls     r3, r3, #2 
+05affa  adds     r2, r3, r2 
+05affc  subs     r3, r7, #4 
+05affe  ldr      r1, [r3] 
+05b000  adds     r3, r7, #0 
+05b002  subs     r3, #8 
+05b004  ldr      r3, [r3] 
+05b006  ldr      r2, [r2] 
+05b008  adds     r0, r1, #0 
+05b00a  adds     r1, r3, #0 
+05b00c  bl       #0x1a429c 
+05b010  adds     r3, r0, #0 
+05b012  cmp      r3, #0 
+05b014  beq      #0x15b018 
+05b016  b        #0x15b042 
+05b018  ldr      r3, [pc, #0x3c]   ; lit@0x5b058 = 0x000005a8
+05b01a  add      r3, sl 
+05b01c  ldr      r3, [r3] 
+05b01e  adds     r2, r3, #0 
+05b020  subs     r3, r7, #4 
+05b022  ldr      r3, [r3] 
+05b024  ldr      r1, [pc, #0x34]   ; lit@0x5b05c = 0x0000a3e4
+05b026  adds     r3, r3, r1 
+05b028  ldr      r3, [r3] 
+05b02a  lsls     r3, r3, #2 
+05b02c  adds     r2, r3, r2 
+05b02e  subs     r3, r7, #4 
+05b030  ldr      r1, [r3] 
+05b032  adds     r3, r7, #0 
+05b034  subs     r3, #8 
+05b036  ldr      r3, [r3] 
+05b038  ldr      r2, [r2] 
+05b03a  adds     r0, r1, #0 
+05b03c  adds     r1, r3, #0 

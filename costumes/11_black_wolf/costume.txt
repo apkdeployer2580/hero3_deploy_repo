@@ -1,0 +1,24 @@
+# 의상 11 — 노말 엔딩 보상 · 케이 전용 (175차: 기본 지급 → 노말 엔딩 보상). 169차: 사용자 참고 그림 4 (검은 털 두건 · 청록 복면 · 맨몸 · 남색 바지 · 검은 발톱).
+# 171차: 투구 시트가 얼굴까지 머리 전체를 그린다 — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그리고, 머리는 helmfit 이 원래보다 작게 깎는다.
+head = own
+# tools_re/costume_atelier/sets/black_wolf.py 가 프레임마다 그린다(재채색 없음).
+set            = 흑랑
+acquire        = clear.normal
+hero           = kei
+helmet         = 흑랑 두건
+helmet.desc    = 검은 털 두건과 청록 복면
+armor          = 흑랑 상의
+armor.desc     = 청록 목도리를 두른 맨몸
+gloves         = 흑랑 장갑
+gloves.desc    = 검은 털 토시와 발톱 장갑
+shoes          = 흑랑 하의
+shoes.desc     = 감발을 친 짙은 남색 바지
+weapon         = 흑랑 무기
+weapon.desc    = 늑대의 송곳니 같은 무기
+weapon.spear   = 흑랑 창
+weapon.sword   = 흑랑 도
+weapon.knife   = 흑랑 발톱
+weapon.dark    = 흑랑 그림자진
+weapon.holy    = 흑랑 달빛진
+shield         = 흑랑 방패
+shield.desc    = 늑대 머리를 새긴 방패

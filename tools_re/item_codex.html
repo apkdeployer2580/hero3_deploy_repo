@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="영웅서기3 개정판의 아이템 도감과 드랍표. 장비·소비품·재료·조합서 전부와 몬스터 161종의 드랍 확률, 헬모드·하늘성 신규 아이템의 입수처를 게임 에셋과 앱 소스에서 그대로 계산해 한 표에 모았다.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="영웅서기3 아이템 도감 · 드랍표">
+<meta property="og:description" content="개정판 v{{VER}} 기준. 신규 아이템·조합서와 몬스터 161종의 드랍 확률, 헬모드·하늘성 입수처.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<title>영웅서기3 아이템 도감</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#E7E2D6; --panel:#FBF8F1; --panel-2:#F1ECE0; --panel-3:#E9E3D4;
+  --line:#C9C1AC; --line-soft:#DED7C6;
+  --ink:#1B1813; --ink-2:#565043; --ink-3:#847C69;
+  --accent:#8A5A1E; --accent-2:#B4801F;
+  --t0:#5C5648; --t1:#7E7F0C; --t2:#3F7A0E; --t3:#0A6E9E; --t4:#C22C2C; --t5:#2F3440;
+  --t6:#C80F0F; --gold:#96660F; --hell:#7A2E8E;
+  --shadow:0 1px 0 #ffffffb0 inset,0 1px 2px #1b18130f,0 10px 26px -18px #1b181333;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#100F0C; --panel:#1B1915; --panel-2:#232019; --panel-3:#2B2720;
+    --line:#3A342A; --line-soft:#2C281F;
+    --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666;
+    --accent:#D9A24A; --accent-2:#B4801F;
+    --t0:#B4AC98; --t1:#D8D926; --t2:#78C437; --t3:#2EBCFF; --t4:#FF5B5B; --t5:#FFFFFF;
+    --t6:#FF3B3B; --gold:#DB9A1A; --hell:#C98BFF;
+    --shadow:0 1px 2px #0007,0 12px 30px -20px #000b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100F0C; --panel:#1B1915; --panel-2:#232019; --panel-3:#2B2720;
+  --line:#3A342A; --line-soft:#2C281F;
+  --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666;
+  --accent:#D9A24A; --accent-2:#B4801F;
+  --t0:#B4AC98; --t1:#D8D926; --t2:#78C437; --t3:#2EBCFF; --t4:#FF5B5B; --t5:#FFFFFF;
+  --t6:#FF3B3B; --gold:#DB9A1A; --hell:#C98BFF;
+  --shadow:0 1px 2px #0007,0 12px 30px -20px #000b;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;font-size:14px;
+  line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:0 20px 80px}
+
+/* The game never draws a square corner: every window is a 2px 45 degree chamfer
+   with a #181818 outline (res/comm/ui_bm). Panels here borrow that silhouette. */
+.cham{clip-path:polygon(3px 0,calc(100% - 3px) 0,100% 3px,100% calc(100% - 3px),
+  calc(100% - 3px) 100%,3px 100%,0 calc(100% - 3px),0 3px)}
+
+header{padding:36px 0 18px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-3)}
+h1{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;
+  font-size:clamp(30px,4.6vw,46px);margin:6px 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--ink-2);max-width:70ch}
+.sub code,footer code,.rules code{font-family:"IBM Plex Mono",monospace;font-size:.92em;
+  background:var(--panel-2);padding:1px 5px;border:1px solid var(--line-soft)}
+
+.counts{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.count{display:flex;align-items:baseline;gap:8px;padding:8px 14px;background:var(--panel);
+  border:1px solid var(--line-soft);border-left:3px solid var(--c);box-shadow:var(--shadow)}
+.count b{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:var(--c)}
+.count span{color:var(--ink-2);font-size:12.5px}
+
+.news{margin-top:18px;padding:14px 16px;background:var(--panel);border:1px solid var(--line-soft);
+  border-left:3px solid var(--t6);box-shadow:var(--shadow);display:flex;flex-wrap:wrap;
+  gap:10px 18px;align-items:center}
+.news .what{flex:1;min-width:260px}
+.news .what b{color:var(--t6)}
+.news .what small{display:block;color:var(--ink-3);font-size:12px;margin-top:2px}
+.news .go{display:flex;flex-wrap:wrap;gap:6px}
+.btn{padding:7px 14px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  font:inherit;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--ink-3)}
+.btn.hot{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+nav{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 0}
+nav button{padding:7px 15px;border:1px solid var(--line);background:var(--panel);
+  color:var(--ink-2);font:inherit;font-size:13px;cursor:pointer}
+nav button:hover{border-color:var(--ink-3);color:var(--ink)}
+nav button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+nav button i{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  opacity:.6;margin-left:6px;font-variant-numeric:tabular-nums}
+
+.bar{position:sticky;top:0;z-index:20;background:var(--bg);padding:14px 0 12px;
+  border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.row+.row{margin-top:7px}
+.lab{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3);width:52px;flex:none}
+input[type=search]{flex:1;min-width:190px;max-width:340px;padding:8px 11px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;
+  font-size:13px}
+input[type=search]::placeholder{color:var(--ink-3)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink-2);font:inherit;
+  font-size:12.5px;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:var(--ink-3);color:var(--ink)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed=true] .dot{box-shadow:0 0 0 1px var(--bg)}
+.dot{width:9px;height:9px;flex:none;border:1px solid #18181880}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hits{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;
+  color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+.scroll{overflow-x:auto;border:1px solid var(--line);border-top:none;background:var(--panel)}
+table{border-collapse:collapse;width:100%;min-width:960px}
+thead th{position:sticky;top:0;z-index:5;background:var(--panel-2);
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:10.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);text-align:left;padding:9px 9px;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--ink)}
+th .car{opacity:.35}
+th[data-on] .car{opacity:1;color:var(--accent)}
+tbody tr{border-bottom:1px solid var(--line-soft)}
+tbody tr:hover{background:var(--panel-2)}
+td{padding:6px 9px;vertical-align:middle}
+td.art{width:52px;padding:3px 6px 3px 12px}
+.art img{display:block;width:30px;height:30px;object-fit:contain;image-rendering:pixelated}
+.nm{font-weight:500;white-space:nowrap;color:var(--gc,var(--ink))}
+.sub2{display:block;font-size:11.5px;color:var(--ink-3);white-space:nowrap;margin-top:1px}
+.sub2.desc{white-space:normal;max-width:46ch;word-break:keep-all}
+.sub2 b{color:var(--ink-2);font-weight:600}
+td.grade{white-space:nowrap;font-size:12.5px;color:var(--gc,var(--ink-2))}
+td.grade b{font-family:"IBM Plex Mono",monospace;font-weight:600;margin-right:5px}
+td.slot,td.wear,td.eff{color:var(--ink-2)}
+td.slot,td.wear{white-space:nowrap}
+td.eff{min-width:250px;word-break:keep-all}
+td.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  text-align:right;white-space:nowrap;color:var(--ink-2)}
+td.num b{font-weight:600;color:var(--ink)}
+td.num s{text-decoration:none;color:var(--ink-3);font-size:11px;margin-left:5px}
+td.lv{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  text-align:right;font-weight:600;white-space:nowrap}
+td.id{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);
+  text-align:right;white-space:nowrap}
+.dash{color:var(--ink-3)}
+.opts,.srcs{display:flex;flex-wrap:wrap;gap:4px}
+.opts{min-width:180px}
+.srcs{min-width:180px;max-width:300px}
+.opt{padding:2px 7px;background:var(--panel-3);border:1px solid var(--line-soft);
+  font-size:11.5px;color:var(--ink-2);white-space:nowrap}
+.opt.dead{border-style:dashed;color:var(--ink-3);text-decoration:line-through}
+.opt.o3{border-color:var(--t6);color:var(--ink)}
+.opt.o3::before{content:"3번째 ";font-family:"IBM Plex Mono",monospace;font-size:9.5px;
+  color:var(--t6);letter-spacing:.04em}
+.src{padding:2px 7px;border:1px solid var(--line);font-size:11.5px;color:var(--ink-2);
+  white-space:nowrap;background:var(--panel);cursor:help}
+.src i{font-style:normal;color:var(--ic,var(--ink));font-weight:500}
+.src.gen,.src.event{border-style:dashed;color:var(--ink-3)}
+.src.smith{border-color:var(--t2);color:var(--t2)}
+.src.cash{border-color:var(--gold);color:var(--gold)}
+.src.hard{border-color:var(--t4);color:var(--t4)}
+.src.hell{border-color:var(--hell);color:var(--hell)}
+.src.tower{border-color:var(--t3);color:var(--t3)}
+.tag{margin-left:6px;padding:1px 5px;border:1px dashed var(--ink-3);
+  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);
+  vertical-align:1px;white-space:nowrap}
+.tag.new{border:1px solid var(--t6);color:var(--t6);font-family:inherit;font-weight:600}
+.tag.chg{border:1px solid var(--gold);color:var(--gold);font-family:inherit;font-weight:600}
+tr.old{opacity:.62}
+tr.old td.art{box-shadow:inset 3px 0 0 -1px var(--ink-3)}
+tr.isnew td.art{box-shadow:inset 3px 0 0 -1px var(--t6)}
+.empty{padding:34px 16px;text-align:center;color:var(--ink-3)}
+.panelnote{padding:11px 14px;background:var(--panel-2);border:1px solid var(--line);
+  border-bottom:none;color:var(--ink-2);font-size:12.5px}
+.panelnote b{color:var(--ink)}
+
+h2{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;font-size:24px;
+  margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:15px;margin:22px 0 8px;font-weight:600}
+.rules{color:var(--ink-2);font-size:13px}
+.rules p{max-width:82ch;margin:8px 0;word-break:keep-all}
+.rules b{color:var(--ink)}
+.rtab{border:1px solid var(--line);background:var(--panel);overflow-x:auto;margin:8px 0 4px}
+.rtab table{min-width:560px}
+.rtab td{padding:7px 12px;border-bottom:1px solid var(--line-soft)}
+.rtab tr:last-child td{border-bottom:none}
+.rtab td.k{white-space:nowrap;font-weight:600;color:var(--ink)}
+footer{margin-top:20px;color:var(--ink-2);font-size:13px}
+footer p{max-width:82ch;word-break:keep-all}
+.sub,.news .what,.panelnote{word-break:keep-all}
+footer b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.leg{display:flex;align-items:center;gap:7px;padding:6px 11px;background:var(--panel);
+  border:1px solid var(--line-soft);font-size:12.5px;color:var(--ink-2)}
+.leg b{font-family:"IBM Plex Mono",monospace;color:var(--gc);font-weight:600}
+.leg code{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3)}
+@media (max-width:640px){
+  .wrap{padding:0 16px 64px}
+  .lab{width:auto;margin-right:2px}
+  .hits{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">영웅서기3 개정판 &middot; v{{VER}} &middot; LGT 01.00.07</div>
+  <h1>아이템 도감 &middot; 드랍표</h1>
+  <p class="sub">게임 에셋의 아이템 데이터베이스 전체(<code>res/dat/i0_dat</code>&hairsp;&ndash;&hairsp;<code>i18_dat</code>)와
+  몬스터 161종의 드랍 레코드(<code>drop_dat</code> / <code>droph_dat</code>)를 그대로 디코드했다.
+  앱이 더한 드랍 &mdash; 하드코어 보스 &middot; 헬모드 &middot; 하늘성 &mdash; 은 앱 소스의 상수에서 읽었다.
+  아이콘도 게임이 그리는 <code>res/comm/item_bm</code> 스프라이트다. 손으로 옮겨 적은 숫자는 하나도 없다.</p>
+  <div class="counts" id="counts"></div>
+  <div class="news cham" id="news"></div>
+</header>
+
+<nav id="tabs" role="tablist"></nav>
+
+<div class="bar">
+  <div class="row">
+    <span class="lab">검색</span>
+    <input type="search" id="q" placeholder="이름 또는 옵션" aria-label="검색">
+    <span class="hits" id="hits"></span>
+  </div>
+  <div class="row" id="rowGrade"><span class="lab">등급</span></div>
+  <div class="row" id="rowSlot"><span class="lab">부위</span></div>
+  <div class="row" id="rowMisc">
+    <span class="lab">그 외</span>
+    <button class="chip" data-f="x" data-v="new" aria-pressed="false">신규 (v{{BASE}} 이후)</button>
+    <button class="chip" data-f="x" data-v="set" aria-pressed="false">세트</button>
+    <button class="chip" data-f="w" data-v="melee" aria-pressed="false">물리 무기</button>
+    <button class="chip" data-f="w" data-v="ranged" aria-pressed="false">특수 무기</button>
+    <button class="chip" data-f="w" data-v="both" aria-pressed="false">공용</button>
+    <button class="chip" data-f="x" data-v="opt" aria-pressed="false">옵션 있는 것만</button>
+    <button class="chip" data-f="x" data-v="live" aria-pressed="false">구판 숨기기</button>
+    <button class="chip" data-f="x" data-v="wh" aria-pressed="false" title="원가가 256의 배수 — canDeposit 이 최하위 바이트를 돌려줘서 창고에 올라가지 않는다">창고 불가</button>
+  </div>
+  <div class="row" id="rowRec" hidden>
+    <span class="lab">조합서</span>
+    <button class="chip" data-f="r" data-v="new" aria-pressed="false">신규 (v{{BASE}} 이후)</button>
+    <button class="chip" data-f="r" data-v="85" aria-pressed="false">85제</button>
+    <button class="chip" data-f="r" data-v="90" aria-pressed="false">90제</button>
+    <button class="chip" data-f="r" data-v="old" aria-pressed="false">원작</button>
+  </div>
+  <div class="row" id="rowMob" hidden>
+    <span class="lab">몬스터</span>
+    <button class="chip" data-f="m" data-v="named" aria-pressed="false">붉은 이름(네임드)</button>
+    <button class="chip" data-f="m" data-v="boss8" aria-pressed="false">리버 보스 8종</button>
+    <button class="chip" data-f="m" data-v="reaver" aria-pressed="false">헬 리버 구간</button>
+    <button class="chip" data-f="m" data-v="recipe" aria-pressed="false">헬 조합서 구간</button>
+    <button class="chip" data-f="m" data-v="item" aria-pressed="false">헬 신규 장비 구간</button>
+  </div>
+</div>
+
+<div class="panelnote" id="note" hidden></div>
+<div class="scroll">
+  <table><thead id="th"></thead><tbody id="tb"></tbody></table>
+  <div class="empty" id="empty" hidden>조건에 맞는 것이 없다.</div>
+</div>
+
+<h2 id="rules">드랍 규칙</h2>
+<div class="rules" id="rulesBody"></div>
+
+<h2>등급은 이름의 색이다</h2>
+<div class="legend" id="legend"></div>
+<footer>
+  <p>게임은 <b>등급을 글자로 쓰지 않는다.</b> 이름 앞에 붙는 한 바이트가 텍스트 색상
+  이스케이프이고(<code>@ | $ { } ' "</code>, 알파벳 <code>.text 0x5b2bc</code> / RGB 표
+  <code>0x5b268</code>), 그 색이 스탯 블록의 티어 바이트와 <b>열두 부위 전부에서 1:1</b>로 맞는다.
+  예외는 둘이다 &mdash; <code>}</code>금색은 <b>등급이 아니라 텍스트 색</b>이고(공허 시리즈는 티어 4),
+  <code>"</code>빨강2는 개정판이 더한 <b>신규 아이템 78종</b>(85제·90제 장비와 요구 Lv1 신규 장신구)의 표시다(티어 5, 전설급과 같은 칸).
+  위의 점은 게임이 실제로 쓰는 RGB 값 그대로이고, 글자색은 배경 대비를 위해 조정한 것이다.</p>
+
+  <p><b>같은 이름이 두 번 나오는 것</b>(<span class="tag">구판</span>)은 버그가 아니다. 열두 부위
+  전부가 사다리 끝을 다시 발행하는 두 번째 블록을 파일 뒤에 달고 있고, 레코드 인덱스가
+  <b>높은 쪽이 정본</b>이다. 예) 단총 <code>0x17 @카이져스톰</code> Lv70 226/33 &rarr;
+  <code>0x1d @카이져스톰</code> Lv70 <b>317/47</b>, 원가는 둘 다 159,500.</p>
+
+  <p><b>옵션 이름과 <code>%</code></b>는 게임의 상세보기와 같다 &mdash; 라벨은 <code>InGame_txt</code>
+  <code>80 + statId</code> 행이고, <code>%</code>는 게임이 붙이는 id(<code>0x6d34</code>)에만 붙였다.
+  <b>점선으로 그은 옵션</b>은 붙어 있지만 아무것도 하지 않는 옵션이다: 장비 옵션은
+  <code>addStat 0x4ee34</code>로 들어가는데 그 표는 statId <code>2..0x17</code>만 받고
+  <code>0x04</code>는 빈 arm이다. <b><span class="opt o3" style="display:inline-block">옵션</span></b>은
+  신규 장신구 11종(보스 장신구 2종 포함)에만 있고 에셋 밖에 산다 &mdash; 레코드가 옵션 쌍을 둘만
+  싣기 때문에 앱이 착용 재계산 때 직접 더한다.</p>
+
+  <p><b>가격</b>은 상점 매입가(원가)다. <b>판매가는 그 1/4</b>이고(<code>price&nbsp;&gt;&gt;&nbsp;2</code>),
+  회색으로 붙여 뒀다. <b>창고 올리기</b>는 판정 함수가 <b>원가의 최하위 바이트</b>를 돌려주는 탓에
+  (<code>canDeposit&nbsp;0x6d70</code>) <b>원가가 256의 배수면 막힌다</b> &mdash; 위의 <b>창고 불가</b>
+  칩이 정확히 그 줄들이고, 원본 게임 동작이라 리메이크도 그대로 뒀다.</p>
+
+  <p><b>주스탯</b> 열은 무기면 공격력, 방어구·방패면 방어력이다(같은 <code>b12</code> 워드).
+  <b>보조</b>는 무기에만 있다. <b>계열</b>은 공격력 게터(<code>0x4cdb4</code>)가 장착 무기
+  종류로 갈래를 타는 경계다 &mdash; 스피어·스워드·나이프는 물리, 단총·캐논·암흑성·광휘석은
+  특수를 쓴다. 혼·악세의 주스탯 자리는 <b>저항</b>이고, 신규 장신구는 그것을 0으로 비우고
+  옵션 셋을 단다(요구 Lv 1). 신규 장비의 <b>85제 / 90제</b>는 등급 열이다.</p>
+
+  <p><b>오브</b>의 보너스는 박힌 홈 수 <code>f</code>에 대해
+  <code>power &times; (f&sup2;+f) / 2</code>다. <b>전투주문서</b>의 대상·수치·지속은 레코드 꼬리
+  5바이트 <code>[대상][statId][i16 값][지속 초]</code>를 읽은 것이다.
+  <code>i13</code>과 <code>i14</code>는 각각 <code>(아래부터)</code> 한 줄을 데이터 구분자로
+  들고 있어서 표와 개수에서 빼 뒀다.</p>
+
+  <p class="eyebrow" style="margin-top:22px">생성 = <code>python tools_re/gen_item_codex.py</code>
+  &middot; 검증 = <code>--check</code> &middot; 신규 표시 기준 = 개정판 v{{BASE}}</p>
+</footer>
+</div>
+
+<script type="application/json" id="data">/*DATA*/</script>
+<script>
+(function(){
+  var D=JSON.parse(document.getElementById('data').textContent);
+  var tb=document.getElementById('tb'), th=document.getElementById('th'),
+      hits=document.getElementById('hits'), empty=document.getElementById('empty'),
+      q=document.getElementById('q'), note=document.getElementById('note'),
+      rowG=document.getElementById('rowGrade'), rowS=document.getElementById('rowSlot'),
+      rowM=document.getElementById('rowMisc'), rowR=document.getElementById('rowRec'),
+      rowB=document.getElementById('rowMob');
+  var ENT={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'};
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return ENT[c];});}
+  function n(v){return String(v).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+  function ico(f){return '<td class="art"><img loading="lazy" src="'+D.icons[f]+'" alt=""></td>';}
+  var NOARM={}; D.noarm.forEach(function(i){NOARM[i]=1;});
+  var HOST={}; D.host.forEach(function(i){HOST[i]=1;});
+  var MELEE={}; D.melee.forEach(function(c){MELEE[c]=1;});
+  var RANGED={}; D.ranged.forEach(function(c){RANGED[c]=1;});
+  // the name colour of a mark: the same variables the grade chips use
+  var MARKC={'':'--ink','@':'--t5','|':'--t1',"'":'--t2','$':'--t3','{':'--t4','}':'--gold','"':'--t6'};
+  function mc(mk){return 'var('+(MARKC[mk]||'--ink')+')';}
+
+  // "<label><value><%>" exactly as the game's detail window prints it
+  function statText(id,v){
+    var s=D.stat[id];
+    if(!s) return 'id 0x'+id.toString(16)+' '+v;
+    if(!v) return s[0].replace(/\s*[+-]$/,'');
+    var lab=s[0];
+    return (/[+-]$/.test(lab)?lab:lab+' +')+v+(s[1]?'%':'');
+  }
+  function optCell(o,gate,o3){
+    if((!o||!o.length)&&!o3) return '<span class="dash">&mdash;</span>';
+    var h=(o||[]).map(function(p){
+      var dead=(gate&&(NOARM[p.i]||(p.i>0x17&&!HOST[p.i])))?' dead':'';
+      var t=dead?' title="addStat 표에 이 statId의 arm이 없어 착용해도 오르지 않는다"':'';
+      return '<span class="opt'+dead+'"'+t+'>'+esc(statText(p.i,p.v))+'</span>';
+    }).join('');
+    if(o3) h+='<span class="opt o3" title="에셋 밖 3번째 옵션 — 앱이 착용 때 적용한다">'+esc(o3)+'</span>';
+    return '<div class="opts">'+h+'</div>';
+  }
+  function srcCell(list){
+    if(!list||!list.length) return '<span class="dash" title="오프라인 획득 경로가 없다">&mdash;</span>';
+    return '<div class="srcs">'+list.map(function(s){
+      return '<span class="src '+s[0]+'" title="'+esc(s[2]||'')+'">'+esc(s[1])+'</span>';
+    }).join('')+'</div>';
+  }
+  function gold(p){
+    if(!p) return '<span class="dash">&mdash;</span>';
+    return '<b>'+n(p)+'</b><s>'+n(p>>2)+'</s>';
+  }
+  function pct(p){
+    var v=p*100;
+    if(v<=0) return '0%';
+    if(v>=10) return v.toFixed(0)+'%';
+    if(v>=1) return v.toFixed(1)+'%';
+    if(v>=0.1) return v.toFixed(2)+'%';
+    return v.toFixed(3)+'%';
+  }
+  function wear(cat){ return MELEE[cat]?'물리':(RANGED[cat]?'특수':'공용'); }
+  function h2(v){return (v<16?'0':'')+v.toString(16);}
+  function idCell(c,i){return '<td class="id">'+h2(c)+'/'+h2(i)+'</td>';}
+  function newTag(it){
+    var t='';
+    if(it.new) t+='<span class="tag new" title="개정판 v'+esc(D.base)+' 이후 추가">신규'+(it.lg?(it.cat===12?' 장신구':' '+it.lg+'제'):'')+'</span>';
+    if(it.chg) t+='<span class="tag chg" title="개정판 v'+esc(D.base)+' 이후 수치·옵션이 바뀌었다">변경</span>';
+    return t;
+  }
+  function setLine(it){
+    if(it.sid===undefined) return '';
+    var s=D.sets[it.sid];
+    return '<span class="sub2" title="'+esc(s[2])+'">세트 <b>'+esc(s[0])+'</b> &middot; '+esc(s[1])
+      +' ('+D.setneed+'조각)</span>';
+  }
+
+  // ── the datasets, each with its own columns ───────────────────────────────
+  var TABS=[
+    {k:'equip', label:'장비', note:null,
+     cols:[['',''],['등급','t'],['이름','n'],['부위','cat'],['계열',''],['Lv','lv'],
+           ['옵션',''],['공격 · 방어','main'],['보조','sub'],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       var tc=D.tcol[it.t], col=it.mk==='"'?'var(--t6)':'var(--t'+it.t+')';
+       return '<tr class="'+(it.tw===1?'old':'')+(it.new?' isnew':'')+'" style="--gc:'+col+'">'
+        +ico(it.ico)
+        +'<td class="grade"><b>T'+it.t+'</b>'+(it.lg?(it.cat===12?'신규 장신구':it.lg+'제'):esc(tc[0]))+'</td>'
+        +'<td><span class="nm">'+esc(it.n)+'</span>'+newTag(it)
+          +(it.tw===1?'<span class="tag" title="같은 이름의 상향판이 뒤에 있다">구판</span>':'')
+          +setLine(it)+'</td>'
+        +'<td class="slot">'+esc(D.slot[it.cat])+'</td>'
+        +'<td class="wear">'+wear(it.cat)+'</td>'
+        +'<td class="lv">'+it.lv+'</td>'
+        +'<td>'+optCell(it.o,1,it.o3)+'</td>'
+        +'<td class="num"><b>'+n(it.main)+'</b></td>'
+        +'<td class="num">'+(it.sub?n(it.sub):'<span class="dash">&mdash;</span>')+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+D.slot[it.cat]+' '+D.tcol[it.t][0]+' '+(it.lg?(it.cat===12?'신규 장신구':it.lg+'제 신규'):'')+' '
+        +(it.sid!==undefined?D.sets[it.sid].join(' '):'')+' '+(it.o3||'')+' '
+        +it.o.map(function(p){return statText(p.i,p.v);}).join(' ')+' '
+        +it.src.map(function(s){return s[1];}).join(' ');}},
+
+    {k:'orbs', label:'오브',
+     note:'박힌 홈 수 <b>f</b>에 대해 <b>power &times; (f&sup2;+f) / 2</b>. '
+        +'<b>소켓확장</b>은 오브가 아니라 홈을 하나 늘리는 아이템인데 같은 파일에 산다.',
+     cols:[['',''],['이름','n'],['설명',''],['오르는 것',''],['POWER','pw'],
+           ['f=1','f1'],['f=2','f2'],['f=3','f3'],['f=4','f4'],['f=5','f5'],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       var f=it.sx
+         ? D.fuse.map(function(){return '<td class="num"><span class="dash">&mdash;</span></td>';}).join('')
+         : D.fuse.map(function(k){
+             return '<td class="num">'+(k===5?'<b>':'')+(it.pw*(k*k+k)/2)+(k===5?'</b>':'')+'</td>';
+           }).join('');
+       return '<tr'+(it.sx?' class="old"':'')+'>'+ico(it.ico)
+        +'<td><span class="nm">'+esc(it.n)+'</span>'
+          +(it.sx?'<span class="tag" title="오브가 아니다 — 같은 파일에 들어 있는 아이템">오브 아님</span>':'')+'</td>'
+        +'<td class="eff">'+esc(it.eff.replace(/;\s*$/,'').replace(/;/g,' · '))+'</td>'
+        +'<td class="slot">'+(it.sx?'<span class="dash">홈 +1</span>'
+            :esc(statText(it.i,0)))+'</td>'
+        +'<td class="num">'+(it.sx?'<span class="dash">&mdash;</span>':it.pw)+'</td>'+f
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.eff+' '+statText(it.i,0);}},
+
+    {k:'scrolls', label:'전투주문서',
+     note:'꼬리 5바이트 <b>[대상][statId][i16 값][지속 초]</b>. 지속이 <b>0</b>인 줄은 '
+        +'즉발이고, 값이 음수인 줄은 디버프다.',
+     cols:[['',''],['이름','n'],['대상',''],['설명',''],['효과',''],['지속','dur'],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       return '<tr style="--gc:'+mc(it.mk)+'">'+ico(it.ico)
+        +'<td><span class="nm">'+esc(it.n)+'</span>'
+          +(it.mk==='}'?'<span class="tag">캐시</span>':'')+'</td>'
+        +'<td class="wear">'+esc(D.tgt[it.tgt]||('?'+it.tgt))+'</td>'
+        +'<td class="eff">'+esc(it.eff.replace(/;/g,' · '))+'</td>'
+        +'<td>'+optCell([{i:it.i,v:it.v}],0)+'</td>'
+        +'<td class="num">'+(it.dur?it.dur+'초':'<span class="dash">즉발</span>')+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.eff+' '+(D.tgt[it.tgt]||'')+' '+statText(it.i,it.v);}},
+
+    {k:'consum', label:'소비품',
+     note:'꼬리 4바이트 <b>[아이콘 프레임][사용 효과 id][u16 값]</b>. 값이 회복량과 그대로 '
+        +'맞아서 자리를 확정할 수 있었다(포션 200 · 하이포션 600 · 엘릭서 3000).',
+     cols:[['',''],['이름','n'],['설명',''],['값','v'],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       return '<tr style="--gc:'+mc(it.mk)+'">'+ico(it.ico)
+        +'<td><span class="nm">'+esc(it.n)+'</span>'
+          +(it.mk==='}'?'<span class="tag">캐시</span>':'')+'</td>'
+        +'<td class="eff">'+esc(it.eff.replace(/;/g,' · '))+'</td>'
+        +'<td class="num">'+(it.v?n(it.v):'<span class="dash">&mdash;</span>')+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.eff+' '+it.src.map(function(s){return s[1];}).join(' ');}},
+
+    {k:'mats', label:'재료',
+     note:'조합·제련 재료다. <b>공통 재료</b> 14종은 모든 몬스터의 재료 칸에서 나온다 &mdash; 재료가 나오면 '
+        +'2/10 확률로 9~13번(바람피리·만년설·혈목·흑암석·뼛조각), 4/10 확률로 0~2번(용액 셋), '
+        +'4/10 확률로 3~8번 중 하나다.',
+     cols:[['',''],['이름','n'],['설명',''],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       return '<tr style="--gc:'+mc(it.mk)+'">'+ico(it.ico)+'<td><span class="nm">'+esc(it.n)+'</span></td>'
+        +'<td class="eff">'+esc(it.eff.replace(/;/g,' · '))+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.eff+' '+it.src.map(function(s){return s[1];}).join(' ');}},
+
+    {k:'recipes', label:'조합서',
+     note:'대장장이 <b>특수조합</b>이 조합서 한 장 + 재료 + 베이스 장비를 받아 결과물 하나를 만든다. '
+        +'<b>수수료</b>는 조합서 행의 가격 칸이고, 재료와 수수료는 성공 굴림 전에 나간다. '
+        +'신규 조합서 78장은 베이스 없이 <b>닉스코어파편</b>만으로 만드는 85제와, 85제를 베이스로 쓰는 90제다.',
+     cols:[['',''],['조합서 → 결과','n'],['베이스',''],['재료',''],['성공률','rate'],['수수료','fee'],['입수처',''],['cat/idx','idx']],
+     row:function(it){
+       var base=it.bn?'<span style="color:'+mc(it.bn[1])+'">'+esc(it.bn[0])+'</span>':'<span class="dash">없음</span>';
+       var mats=it.mn.map(function(m){
+         return '<span class="opt"><span style="color:'+mc(m[1])+'">'+esc(m[0])+'</span> &times;'+m[2]+'</span>';
+       }).join('');
+       return '<tr class="'+(it.new?'isnew':'')+'" style="--gc:'+mc(it.mk)+'">'+ico(it.ico)
+        +'<td><span class="nm" style="--gc:'+mc(it.on[1])+'">'+esc(it.on[0])+'</span>'+newTag(it)
+          +(it.txt?'<span class="sub2 desc">'+esc(it.txt)+'</span>':'')+'</td>'
+        +'<td class="wear">'+base+'</td>'
+        +'<td><div class="opts">'+mats+'</div></td>'
+        +'<td class="num">'+it.rate+'%</td>'
+        +'<td class="num">'+(it.fee?n(it.fee):'<span class="dash">&mdash;</span>')+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'+idCell(15,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.on[0]+' '+(it.bn?it.bn[0]:'')+' '+it.mn.map(function(m){return m[0];}).join(' ')
+        +' '+it.txt+' '+(it.lg?it.lg+'제 신규':'');}},
+
+    {k:'misc', label:'퀘스트 · 기타',
+     note:'퀘스트 진행용 아이템. 원가 0인 것은 상점에서 사고팔 수 없다.',
+     cols:[['',''],['이름','n'],['설명',''],['입수처',''],['가격 · 판매','price'],['cat/idx','idx']],
+     row:function(it){
+       return '<tr>'+ico(it.ico)+'<td><span class="nm">'+esc(it.n)+'</span></td>'
+        +'<td class="eff">'+esc(it.eff.replace(/;/g,' · '))+'</td>'
+        +'<td>'+srcCell(it.src)+'</td>'
+        +'<td class="num">'+gold(it.price)+'</td>'+idCell(it.cat,it.idx)+'</tr>';
+     },
+     hay:function(it){return it.n+' '+it.eff;}},
+
+    {k:'mobs', label:'몬스터 드랍',
+     note:'확률은 전부 <b>한 마리당</b>이다. 처치할 때 <b>굴림</b> 수만큼 0~65535를 굴려 누적 문턱에 대고 '
+        +'(무기 &rarr; 방어구 &rarr; 혼 &rarr; 지정 &rarr; 재료 &rarr; 빈손), 그중 하나라도 나올 확률을 적었다. '
+        +'<b>무기·방어구</b>는 레벨대에 맞는 등급 3 이하 장비 하나가 무작위로, <b>재료</b>는 공통 재료 14종 중 하나가 나온다. '
+        +'헬모드는 하드코어 표로 스폰하므로 원작 드랍은 하드와 같고, <b>추가 드랍</b>은 앱이 그 위에 얹는 것이다.',
+     cols:[['#','id'],['몬스터','n'],['노말','lvn'],['하드','lvh'],['헬','hl'],['굴림','rh'],
+           ['노말 드랍',''],['하드코어 · 헬 드랍',''],['추가 드랍 (앱)','']],
+     row:function(it){
+       return '<tr style="--gc:'+mc(it.mk)+'">'
+        +'<td class="id" style="text-align:left">'+it.id+'</td>'
+        +'<td><span class="nm">'+esc(it.n)+'</span>'+(it.nm?'<span class="tag" title="게임이 붉은 이름으로 그리는 엘리트 — 헬에서 네임드 판정">네임드</span>':'')+'</td>'
+        +'<td class="lv">Lv'+it.lv[0]+'</td><td class="lv">Lv'+it.lv[1]+'</td>'
+        +'<td class="lv" style="color:var(--hell)">Lv'+it.hl+'</td>'
+        +'<td class="num">'+it.r[0]+' / '+it.r[1]+'</td>'
+        +'<td>'+dropCell(it.d[0],it.r[0])+'</td>'
+        +'<td>'+dropCell(it.d[1],it.r[1])+'</td>'
+        +'<td>'+srcCell(it.x)+'</td></tr>';
+     },
+     hay:function(it){
+       var s=it.n+(it.nm?' 네임드':'');
+       it.d.forEach(function(c){ if(c.s) s+=' '+c.s[0]; if(c.nd) s+=' '+c.nd[0]; });
+       return s+' '+it.x.map(function(x){return x[1];}).join(' ');
+     }}
+  ];
+  function dropCell(c,rolls){
+    if(!rolls) return '<span class="dash">드랍 없음 (굴림 0)</span>';
+    var h=[];
+    if(c.w>0) h.push('<span class="src gen" title="레벨대에 맞는 등급 3 이하 무기 하나">무기 '+pct(c.w)+'</span>');
+    if(c.a>0) h.push('<span class="src gen" title="레벨대에 맞는 등급 3 이하 방어구 하나">방어구 '+pct(c.a)+'</span>');
+    if(c.s) h.push(itemChip('혼',c.s));
+    if(c.nd) h.push(itemChip('지정',c.nd));
+    if(c.c>0) h.push('<span class="src gen" title="공통 재료 14종 중 하나">재료 '+pct(c.c)+'</span>');
+    return h.length?'<div class="srcs">'+h.join('')+'</div>':'<span class="dash">&mdash;</span>';
+  }
+  function itemChip(kind,v){
+    return '<span class="src" style="--ic:'+mc(v[1])+'" title="'+kind+' 칸 — 이 몬스터가 직접 지목하는 아이템">'
+      +kind+' <i>'+esc(v[0])+'</i> '+pct(v[2])+'</span>';
+  }
+
+  D.mobs.forEach(function(m){ m.lvn=m.lv[0]; m.lvh=m.lv[1]; m.rh=m.r[1]; m.cat=0; m.idx=m.id; });
+  var BOSS8={}; (D.hell.bosses||[]).forEach(function(b){BOSS8[b]=1;});
+  var H=D.hell;
+
+  var tab=TABS[0], F={g:{},k:{},w:{},x:{},r:{},m:{}}, sortKey='cat', sortDir=1;
+  function anyOn(o){for(var k in o){if(o[k])return true;}return false;}
+
+  function sortVal(it,k){
+    if(k.charAt(0)==='f'&&k.length===2) return it.pw*(+k.charAt(1)*+k.charAt(1)+ +k.charAt(1))/2;
+    var v=it[k];
+    return v===undefined?0:v;
+  }
+  function match(it){
+    if(tab.k==='equip'){
+      if(anyOn(F.g)&&!F.g[it.t]) return false;
+      if(anyOn(F.k)&&!F.k[it.cat]) return false;
+      if(anyOn(F.w)&&!F.w[MELEE[it.cat]?'melee':(RANGED[it.cat]?'ranged':'both')]) return false;
+      if(F.x.new&&!it.new) return false;
+      if(F.x.set&&it.sid===undefined) return false;
+      if(F.x.opt&&!it.o.length) return false;
+      if(F.x.live&&it.tw===1) return false;
+      if(F.x.wh&&!(it.price&&it.price%256===0)) return false;
+    } else if(tab.k==='recipes'){
+      if(F.r.new&&!it.new) return false;
+      if(F.r.old&&it.new) return false;
+      if((F.r['85']||F.r['90'])&&!((F.r['85']&&it.lg===85)||(F.r['90']&&it.lg===90))) return false;
+    } else if(tab.k==='mobs'){
+      if(F.m.named&&!it.nm) return false;
+      if(F.m.boss8&&!BOSS8[it.n]) return false;
+      if(F.m.reaver&&!(it.hl>=H.reaver[0]&&it.hl<=H.reaver[1])) return false;
+      if(F.m.recipe&&!(it.hl>=H.recipe[0]&&it.hl<=H.recipe[1])) return false;
+      if(F.m.item&&!(it.hl>=H.item)) return false;
+    }
+    var s=q.value.trim().toLowerCase();
+    return !s||tab.hay(it).toLowerCase().indexOf(s)>=0;
+  }
+
+  function render(){
+    var all=D[tab.k], list=all.filter(match);
+    list.sort(function(a,b){
+      var x=sortVal(a,sortKey), y=sortVal(b,sortKey), r;
+      if(typeof x==='string') r=x.localeCompare(y,'ko'); else r=x-y;
+      if(!r) r=(a.lv&&a.lv.length===undefined?a.lv:0)-(b.lv&&b.lv.length===undefined?b.lv:0);
+      if(!r) r=(a.idx||0)-(b.idx||0);
+      if(!r) r=(a.n||'').localeCompare(b.n||'','ko');
+      return r*sortDir;
+    });
+    hits.textContent=list.length+' / '+all.length+(tab.k==='mobs'?'마리':'종');
+    empty.hidden=list.length>0;
+    tb.innerHTML=list.map(tab.row).join('');
+  }
+
+  function head(){
+    th.innerHTML='<tr>'+tab.cols.map(function(c){
+      var right=/가격|Lv|POWER|^f=|공격|보조|값|지속|cat\/idx|성공률|수수료|굴림|^노말$|^하드$|^헬$/.test(c[0]);
+      if(!c[1]) return '<th'+(right?' style="text-align:right"':'')+'>'+c[0]+'</th>';
+      var on=sortKey===c[1];
+      return '<th class="sortable" data-s="'+c[1]+'"'+(on?' data-on':'')
+        +(right?' style="text-align:right"':'')+'>'+c[0]
+        +' <span class="car">'+(on?(sortDir>0?'↑':'↓'):'↕')+'</span></th>';
+    }).join('')+'</tr>';
+    th.querySelectorAll('th.sortable').forEach(function(t){
+      t.addEventListener('click',function(){
+        var k=t.dataset.s;
+        if(sortKey===k) sortDir=-sortDir; else {sortKey=k;sortDir=1;}
+        head(); render();
+      });
+    });
+  }
+
+  function selectTab(t){
+    tab=t;
+    sortKey=(t.k==='equip')?'cat':(t.k==='mobs'?'id':'idx'); sortDir=1;
+    var eq=t.k==='equip';
+    rowG.hidden=rowS.hidden=rowM.hidden=!eq;
+    rowR.hidden=t.k!=='recipes';
+    rowB.hidden=t.k!=='mobs';
+    note.hidden=!t.note; if(t.note) note.innerHTML=t.note;
+    document.querySelectorAll('#tabs button').forEach(function(b){
+      b.setAttribute('aria-selected', String(b.dataset.k===t.k));
+    });
+    q.placeholder=eq?'이름·옵션·세트 (예: 붉은마녀, 쿨타임)':(t.k==='mobs'?'몬스터 또는 드랍 아이템 이름':'이름 또는 설명');
+    head(); render();
+  }
+  function byKey(k){return TABS.filter(function(t){return t.k===k;})[0];}
+  function setChip(f,v,on){
+    F[f][v]=on;
+    document.querySelectorAll('.chip[data-f="'+f+'"][data-v="'+v+'"]').forEach(function(b){
+      b.setAttribute('aria-pressed',String(on));
+    });
+  }
+  function clearChips(){
+    for(var f in F){ for(var v in F[f]){ setChip(f,v,false); } }
+  }
+
+  // ── chrome ────────────────────────────────────────────────────────────────
+  document.getElementById('tabs').innerHTML=TABS.map(function(t){
+    return '<button class="cham" role="tab" data-k="'+t.k+'" aria-selected="false">'
+      +t.label+'<i>'+D[t.k].length+'</i></button>';
+  }).join('');
+  document.querySelectorAll('#tabs button').forEach(function(b){
+    b.addEventListener('click',function(){ selectTab(byKey(b.dataset.k)); });
+  });
+
+  var CC=['--t4','--t3','--t2','--t1','--gold','--t6','--t0','--hell'];
+  document.getElementById('counts').innerHTML=TABS.map(function(t,i){
+    return '<div class="count cham" style="--c:var('+(CC[i]||'--t0')+')"><b>'+D[t.k].length
+      +'</b><span>'+t.label+'</span></div>';
+  }).join('');
+
+  var NW=D.news;
+  document.getElementById('news').innerHTML=
+    '<div class="what">개정판 v'+esc(D.base)+' 이후 &mdash; <b>신규 아이템 '+NW.items+'종</b>(85제 '+NW.e85
+    +' &middot; 90제 '+NW.e90+' &middot; 신규 장신구 '+NW.acc+') &middot; <b>신규 조합서 '+NW.recipes+'종</b>'
+    +'<small>헬모드 Lv'+H.item+'+ 몬스터 &middot; 하늘성 퇴장 보상 &middot; 대장장이 특수조합으로 얻는다. 확률과 입수처는 각 줄의 입수처 칸.</small></div>'
+    +'<div class="go"><a class="btn hot" href="new/">신규 아이템 보기</a>'
+    +'<button class="btn" data-go="recipes-new">신규 조합서 보기</button>'
+    +'<button class="btn" data-go="mobs">몬스터 드랍</button>'
+    +'<a class="btn" href="#rules">드랍 규칙</a></div>';
+
+  function go(where,push){
+    clearChips(); q.value='';
+    if(where==='new'){ setChip('x','new',true); selectTab(TABS[0]); }
+    else if(where==='recipes-new'){ setChip('r','new',true); selectTab(byKey('recipes')); }
+    else if(where==='mobs'){ selectTab(byKey('mobs')); }
+    else { selectTab(TABS[0]); }
+    if(push){ try{history.replaceState(null,'','#'+where);}catch(e){} }
+    var bar=document.getElementById('tabs');
+    if(push&&bar.scrollIntoView) bar.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  document.querySelectorAll('[data-go]').forEach(function(b){
+    b.addEventListener('click',function(){ go(b.dataset.go,true); });
+  });
+
+  var tiers=Object.keys(D.tcol).sort();
+  rowG.insertAdjacentHTML('beforeend', tiers.map(function(t){
+    return '<button class="chip cham" data-f="g" data-v="'+t+'" aria-pressed="false">'
+      +'<span class="dot" style="background:'+D.tcol[t][1]+'"></span>T'+t+' '+D.tcol[t][0]
+      +'</button>';
+  }).join(''));
+  rowS.insertAdjacentHTML('beforeend', Object.keys(D.slot).sort(function(a,b){return a-b;})
+    .map(function(c){
+      return '<button class="chip cham" data-f="k" data-v="'+c+'" aria-pressed="false">'
+        +D.slot[c]+'</button>';
+    }).join(''));
+
+  document.querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click',function(){
+      var on=b.getAttribute('aria-pressed')==='true';
+      setChip(b.dataset.f,b.dataset.v,!on);
+      render();
+    });
+  });
+  q.addEventListener('input', render);
+
+  document.getElementById('legend').innerHTML=tiers.map(function(t){
+    var c=D.tcol[t];
+    return '<div class="leg cham" style="--gc:var(--t'+t+')">'
+      +'<span class="dot" style="background:'+c[1]+'"></span>'
+      +'<b>T'+t+'</b>'+c[0]+' <code>'+(c[2]?esc(c[2])+' '+c[1]:'이스케이프 없음')+'</code></div>';
+  }).join('')
+   +'<div class="leg cham" style="--gc:var(--t6)">'
+   +'<span class="dot" style="background:'+D.colour['"'][1]+'"></span>'
+   +'<b>T5</b>빨강2 <code>" '+D.colour['"'][1]+'</code> 신규 85·90제</div>'
+   +'<div class="leg cham" style="--gc:var(--gold)">'
+   +'<span class="dot" style="background:'+D.colour['}'][1]+'"></span>'
+   +'<b>&mdash;</b>금색 <code>} '+D.colour['}'][1]+'</code> 등급 아님</div>';
+
+  // ── the drop rules, from the same numbers the app ships ───────────────────
+  function hellOf(lv0){
+    var lo=H.spawn[0], hi=H.spawn[1], d=Math.min(Math.max(lv0,lo),hi)-lo;
+    var si=hi-lo, so=H.lv[1]-H.lv[0];
+    return H.lv[0]+Math.floor((d*so+Math.floor(si/2))/si);
+  }
+  function firstSpawn(want){ for(var l=H.spawn[0];l<=H.spawn[1];l++){ if(hellOf(l)>=want) return l; } return null; }
+  function trow(cells){return '<tr>'+cells.map(function(c,i){return '<td'+(i===0?' class="k"':'')+'>'+c+'</td>';}).join('')+'</tr>';}
+  var acc=(H.acc||[]).map(function(a){return '<b>'+esc(a[0])+'</b> &rarr; '+esc(a[1]);}).join(' &middot; ');
+  var T=D.tower;
+  var setMin=Math.min.apply(null,D.setinfo.map(function(x){return x[0];})),
+      setMax=Math.max.apply(null,D.setinfo.map(function(x){return x[0];}));
+  var rb='';
+  rb+='<h3>원작 드랍 (노말 · 하드코어)</h3>'
+    +'<p>몬스터 종마다 드랍 레코드가 하나씩 있고(<code>drop_dat</code> 노말 · <code>droph_dat</code> 하드, 161종), '
+    +'처치할 때 정해진 횟수 &mdash; <b>노말 1 · 하드 2 · 붉은 이름 5</b>(일부 0) &mdash; 만큼 0~65535를 굴려 누적 문턱에 댄다: '
+    +'무기 &rarr; 방어구 &rarr; <b>혼</b>(악세 한 종을 직접 지정) &rarr; <b>지정</b>(종마다 한 칸) &rarr; 재료 &rarr; 빈손. '
+    +'무기·방어구 칸은 레벨대에 맞는 <b>등급 3 이하 · 요구 Lv 59 이하</b> 장비를 무작위로 고르므로 특정 아이템을 지목하지 않는다 '
+    +'&mdash; 그런 장비는 입수처에 「일반 드랍」으로만 적었다. 몬스터별 확률은 <a href="#mobs" data-go2="mobs">몬스터 드랍</a> 탭.</p>';
+  rb+='<h3>하드코어 추가 드랍</h3>'
+    +'<p>노말에서는 아무것도 더하지 않는다. 하드코어(와 헬)에서만 처치마다 따로 굴린다.</p>'
+    +'<div class="rtab"><table><tbody>'
+    +trow(['리버 무기 8종', esc(H.bosses.join(' · ')), '처치마다 <b>'+H.reaver_rate+'%</b> &mdash; 8종 중 하나 (80제)'])
+    +trow(['보스 장신구', acc, '처치마다 <b>'+H.reaver_rate+'%</b> &mdash; 헬에서도 같다'])
+    +'</tbody></table></div>';
+  var s79=firstSpawn(H.recipe[0]), s85=firstSpawn(H.item), s93=firstSpawn(H.named);
+  rb+='<h3>헬모드 추가 드랍</h3>'
+    +'<p>헬모드는 하드코어를 클리어하면 열린다. 몬스터는 하드코어 표로 스폰한 뒤 레벨이 <b>'+H.spawn[0]+'~'+H.spawn[1]
+    +' &rarr; '+H.lv[0]+'~'+H.lv[1]+'</b>로 선형 상승하고(하드 Lv'+s79+'+ = 헬 Lv'+H.recipe[0]+'+ · Lv'+s85+'+ = 헬 Lv'+H.item
+    +'+ · Lv'+s93+'+ = 헬 Lv'+H.named+'+), 원작 드랍은 하드코어 그대로다. 그 위에 <b>헬 레벨</b>로 아래를 각각 따로 굴린다:</p>'
+    +'<div class="rtab"><table><tbody>'
+    +trow(['리버 무기','헬 Lv'+H.reaver[0]+'~'+H.reaver[1]+' 모든 몬스터','<b>'+H.reaver_rate+'%</b> &mdash; 8종 중 하나'])
+    +trow(['신규 조합서','헬 Lv'+H.recipe[0]+'~'+H.recipe[1]+' 모든 몬스터','<b>'+H.rate+'%</b> &mdash; '+H.nrec+'종 중 하나'])
+    +trow(['신규 85제 풀','헬 Lv'+H.item+'~'+H.lv[1]+' 몬스터','<b>'+H.rate+'%</b> &mdash; '+H.n85+'종(장비 '+H.e85+' &middot; 신규 장신구 '+H.a85+') 중 하나 (네임드 Lv'+H.named+'+ 제외)'])
+    +trow(['신규 90제 풀','헬 Lv'+H.named+'+ 네임드(붉은 이름 · 보스)','<b>'+H.rate+'%</b> &mdash; '+H.n90+'종(장비 '+H.e90+' &middot; 신규 장신구 '+H.a90+') 중 하나'])
+    +trow(['닉스코어파편','헬 Lv'+H.shard+'~'+H.lv[1]+' 모든 몬스터','<b>'+H.rate+'%</b> &mdash; 1개'])
+    +'</tbody></table></div>'
+    +'<p>헬 Lv'+H.item+'은 조합서와 신규 장비를 둘 다 굴린다. 붉은 이름 몬스터: '+esc((H.named_species||[]).join(' · '))+'.</p>';
+  rb+='<h3>하늘성 퇴장 보상</h3>'
+    +'<p>하늘성(하드코어 이상)은 층 안에서는 아무것도 떨어지지 않는다. 런이 끝날 때 &mdash; 사망 · 포기(EXIT) · 100층 완주 &mdash; '
+    +'<b>이번 런에서 잡은 가장 높은 보스층</b> 하나에 대해 한 번 지급한다. 메인메뉴로 나가면 없다.</p>'
+    +'<div class="rtab"><table><tbody>'
+    +trow(['최고 보스층','닉스코어파편','조합서 1장','신규 85제 실물','신규 90제 추가'].map(function(x){return '<b>'+x+'</b>';}))
+    +T.map(function(t){
+      return trow([t.boss+'층', t.shards+'개', t.recipe[0]+'제 중 하나', t.legacy?'1개':'<span class="dash">&mdash;</span>',
+                   t.endgame?t.endgame+'% 확률':'<span class="dash">&mdash;</span>']);
+    }).join('')
+    +'</tbody></table></div>';
+  rb+='<h3>세트 효과</h3>'
+    +'<p>신규 세트 '+D.sets.length+'종은 세트 장비 중 <b>아무 '+D.setneed+'부위</b>만 끼면 켜진다'
+    +' (세트마다 '+setMin+'~'+setMax+'부위, 투구 · 갑옷 · 장갑 · 신발 · 방패 · 세트 장신구).</p>'
+    +'<div class="rtab"><table><tbody>'
+    +D.sets.map(function(s,i){var si=D.setinfo[i];return trow([esc(s[0])+' ('+si[1]+'제 · '+si[0]+'부위)','<b>'+esc(s[1])+'</b>',esc(s[2])]);}).join('')
+    +'</tbody></table></div>';
+  document.getElementById('rulesBody').innerHTML=rb;
+  document.querySelectorAll('[data-go2]').forEach(function(a){
+    a.addEventListener('click',function(e){ e.preventDefault(); go(a.dataset.go2,true); });
+  });
+
+  var h=(location.hash||'').replace('#','');
+  // the old patch-notes link (/#new) now opens the plain new-items page
+  if(h==='new'){ try{location.replace('new/');}catch(e){} }
+  if(h==='new'||h==='recipes-new'||h==='mobs') go(h,false); else selectTab(TABS[0]);
+  if(h==='rules'){ var r=document.getElementById('rules'); if(r&&r.scrollIntoView) r.scrollIntoView(); }
+})();
+</script>
+</body>
+</html>

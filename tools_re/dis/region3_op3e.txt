@@ -1,0 +1,83 @@
+05709a  movs     r0, #0 
+05709c  bl       #0x17e4c4 
+0570a0  adds     r2, r7, #0 
+0570a2  subs     r2, #0x14 
+0570a4  movs     r3, #0 
+0570a6  str      r3, [r2] 
+0570a8  adds     r2, r7, #0 
+0570aa  subs     r2, #0x18 
+0570ac  movs     r3, #1 
+0570ae  str      r3, [r2] 
+0570b0  adds     r2, r7, #0 
+0570b2  subs     r2, #0x1c 
+0570b4  movs     r3, #0 
+0570b6  str      r3, [r2] 
+0570b8  adds     r2, r7, #0 
+0570ba  subs     r2, #0x20 
+0570bc  movs     r3, #0 
+0570be  str      r3, [r2] 
+0570c0  bl       #0x195e40 
+0570c4  bl       #0x14ad10 
+0570c8  adds     r4, r0, #0 
+0570ca  ldr      r3, [pc, #0x1a0]   ; lit@0x5726c = 0x00000018
+0570cc  add      r3, sl 
+0570ce  ldr      r3, [r3] 
+0570d0  ldr      r3, [r3] 
+0570d2  ldr      r3, [r3, #0x70] 
+0570d4  bl       #0x1a42a0 
+0570d8  str      r0, [r4, #0x1c] 
+0570da  str      r1, [r4, #0x20] 
+0570dc  bl       #0x14ad10 
+0570e0  adds     r3, r0, #0 
+0570e2  adds     r2, r3, #0 
+0570e4  adds     r2, #0xf8 
+0570e6  movs     r3, #0xfa 
+0570e8  lsls     r3, r3, #2 
+0570ea  str      r3, [r2] 
+0570ec  bl       #0x14ad10 
+0570f0  adds     r4, r0, #0 
+0570f2  bl       #0x14ad10 
+0570f6  adds     r3, r0, #0 
+0570f8  adds     r3, #0xd4 
+0570fa  adds     r2, r4, #0 
+0570fc  adds     r2, #0xd9 
+0570fe  ldrb     r3, [r3] 
+057100  strb     r3, [r2] 
+057102  adds     r2, r7, #0 
+057104  subs     r2, #0x18 
+057106  adds     r3, r7, #0 
+057108  subs     r3, #0x10 
+05710a  ldr      r3, [r3] 
+05710c  adds     r3, #0xa 
+05710e  adds     r0, r2, #0 
+057110  adds     r1, r3, #0 
+057112  bl       #0x197874 
+057116  bl       #0x14ad10 
+05711a  adds     r3, r0, #0 
+05711c  adds     r3, #0xb4 
+05711e  adds     r0, r3, #0 
+057120  bl       #0x145f4c 
+057124  bl       #0x14ad10 
+057128  adds     r4, r0, #0 
+05712a  bl       #0x14ad10 
+05712e  adds     r3, r0, #0 
+057130  adds     r3, #0xec 
+057132  ldr      r3, [r3] 
+057134  adds     r2, r3, #0 
+057136  adds     r3, r4, #0 
+057138  adds     r3, #0xf2 
+05713a  strh     r2, [r3] 
+05713c  adds     r3, r7, #0 
+05713e  subs     r3, #0x14 
+057140  adds     r0, r3, #0 
+057142  bl       #0x1960bc 
+057146  adds     r2, r0, #0 
+057148  adds     r3, r7, #0 
+05714a  subs     r3, #0x1c 
+05714c  str      r2, [r3] 
+05714e  bl       #0x14ad10 
+057152  adds     r3, r0, #0 
+057154  adds     r3, #0xb4 
+057156  adds     r0, r3, #0 
+057158  bl       #0x145f4c 
+05715c  bl       #0x14ad10 

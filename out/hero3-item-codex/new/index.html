@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="영웅서기3 개정판 v0.436.0 신규 아이템 78종을 세트별로 묶은 목록. 아이템마다 효과, 그리고 드랍표.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="영웅서기3 신규 아이템">
+<meta property="og:description" content="개정판 v0.436.0 · 신규 아이템 78종 · 효과와 드랍표">
+<title>영웅서기3 신규 아이템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#E7E2D6; --panel:#FBF8F1; --line:#C9C1AC; --line-soft:#DED7C6;
+  --ink:#1B1813; --ink-2:#565043; --ink-3:#847C69; --red:#C80F0F; --link:#0A6E9E;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#100F0C; --panel:#1B1915; --line:#3A342A; --line-soft:#2C281F;
+    --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666; --red:#FF5252; --link:#2EBCFF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100F0C; --panel:#1B1915; --line:#3A342A; --line-soft:#2C281F;
+  --ink:#EDE7D9; --ink-2:#ADA490; --ink-3:#7E7666; --red:#FF5252; --link:#2EBCFF;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;font-size:15px;line-height:1.6;
+  word-break:keep-all;-webkit-font-smoothing:antialiased}
+.page{max-width:900px;margin:0 auto;padding-inline:16px;padding-block:28px 64px}
+h1{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;font-size:clamp(30px,6vw,42px);margin:0 0 4px}
+.meta{margin:0;color:var(--ink-2)}
+.meta a{color:var(--link)}
+h2{font-family:"Do Hyeon",system-ui,sans-serif;font-weight:400;font-size:24px;margin:34px 0 8px;
+  padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2 small{font-family:"IBM Plex Sans KR",system-ui,sans-serif;font-size:13px;color:var(--ink-3);margin-left:6px}
+.setfx{margin:0 0 8px;color:var(--ink-2)}
+.setfx b{color:var(--ink)}
+.tbl{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;vertical-align:top;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+tr:last-child td{border-bottom:none}
+th{font-size:13px;color:var(--ink-3);font-weight:600;white-space:nowrap}
+.drops td:first-child{white-space:nowrap;font-weight:600}
+.drops{min-width:560px}
+.note{margin:8px 0 0;color:var(--ink-3);font-size:13px}
+.items td.nm{white-space:nowrap}
+.items td.nm b{color:var(--red);font-weight:600}
+.items td.nm span{display:block;font-size:12.5px;color:var(--ink-3)}
+.items td.fx{min-width:0}
+.items td.mk{font-size:13px;color:var(--ink-2)}
+.tag{font-size:11px;border:1px solid var(--ink-3);color:var(--ink-3);padding:0 4px;margin-left:4px;font-weight:400}
+@media (max-width:640px){
+  .items thead{display:none}
+  .items tr{display:block;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+  .items tr:last-child{border-bottom:none}
+  .items td{display:block;padding:0;border:none}
+  .items td.fx{margin-top:2px}
+  .items td.mk{margin-top:2px}
+  .items td.mk::before{content:"조합 · ";color:var(--ink-3)}
+  .drops{min-width:0}
+  .drops thead{display:none}
+  .drops tr{display:block;padding:8px 12px;border-bottom:1px solid var(--line-soft)}
+  .drops tr:last-child{border-bottom:none}
+  .drops td{display:block;padding:0;border:none}
+  .drops td[data-l]::before{content:attr(data-l) " · ";color:var(--ink-3)}
+}
+</style>
+</head>
+<body>
+<main class="page">
+<h1>신규 아이템</h1>
+<p class="meta">영웅서기3 개정판 v0.436.0 · 78종 (85제 29 · 90제 40 · 신규 장신구 9)</p>
+<h2>드랍표</h2>
+<div class="tbl"><table class="drops"><thead><tr><th>입수처</th><th>85제 (35종)</th><th>90제 (43종)</th></tr></thead><tbody>
+<tr><td>헬모드 처치</td><td data-l="85제">Lv85 이상 몬스터 1% · 35종(장비 29 · 신규 장신구 6) 중 하나</td><td data-l="90제">네임드 Lv93 이상 1% · 43종(장비 40 · 신규 장신구 3) 중 하나</td></tr>
+<tr><td>하늘성 퇴장 보상</td><td data-l="85제">최고 보스층 60층 이상이면 1개</td><td data-l="90제">최고 보스층 80층 1% · 90층 3% · 100층 10% 확률로 1개</td></tr>
+<tr><td>특수조합</td><td data-l="85제">조합서 + 닉스코어파편</td><td data-l="90제">조합서 + 베이스 장비 + 닉스코어파편</td></tr>
+<tr><td>조합서</td><td data-l="85제">헬 Lv79~85 처치 1% · 하늘성 10~60층 퇴장 보상</td><td data-l="90제">헬 Lv79~85 처치 1% · 하늘성 70~100층 퇴장 보상</td></tr>
+<tr><td>닉스코어파편</td><td colspan="2">헬 Lv79 이상 처치 1% · 하늘성 퇴장 보상 3~30개</td></tr>
+<tr><td>신규 장신구</td><td colspan="2">9종 — 6종은 Lv85 이상 몬스터 풀(85제 열) · 3종은 네임드 Lv93 이상 풀(90제 열) · 하늘성 퇴장 보상도 같은 띠. 전부 요구 Lv1</td></tr>
+</tbody></table></div>
+<p class="note">헬모드에서는 하드코어 몬스터가 Lv68~100 로 올라간다 (하드 Lv53 이상 = 헬 Lv85 이상, 하드 Lv61 이상 = 헬 Lv93 이상). 네임드는 붉은 이름 몬스터와 보스.</p>
+<h2>템플러 세트<small>85제 · 5부위</small></h2><p class="setfx">4부위 이상 착용: <b>수호의 맹세</b> · 치명상 시 HP 1로 5초 무적 (재사용 100초)</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>템플러헬름</b><span>투구 · Lv85</span></td><td class="fx">방 206 · 특수방어 +30% · 방패 +30</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>템플러플레이트</b><span>갑옷 · Lv85</span></td><td class="fx">방 237 · 물리방어 +30% · HPMAX +30%</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>템플러건틀릿</b><span>장갑 · Lv85</span></td><td class="fx">방 179 · 방패 +30 · HP회복 +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>템플러그리브</b><span>신발 · Lv85</span></td><td class="fx">방 179 · 특수방어 +30% · HPMAX +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>케네스방패</b><span>방패 · Lv85</span></td><td class="fx">방 194 · 물리방어 +30% · 방패 +30</td><td class="mk">닉스코어파편 9개</td></tr></tbody></table></div>
+<h2>크루세이더 세트<small>85제 · 5부위</small></h2><p class="setfx">4부위 이상 착용: <b>기습</b> · HP가 가득 찬 적에게 첫 공격 피해 2배</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>크루세이더후드</b><span>투구 · Lv85</span></td><td class="fx">방 206 · 회피 +30 · 명중 +30</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>크루세이더코트</b><span>갑옷 · Lv85</span></td><td class="fx">방 237 · 회피 +30 · 기절 +30</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>크루세이더핸드</b><span>장갑 · Lv85</span></td><td class="fx">방 179 · 기절 +30 · 방패무시 +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>크루세이더워커</b><span>신발 · Lv85</span></td><td class="fx">방 179 · 회피 +30 · 공격속도 +50</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>닉스의문장</b><span>방패 · Lv85</span></td><td class="fx">방 194 · 기절 +30 · 방패 +30</td><td class="mk">닉스코어파편 9개</td></tr></tbody></table></div>
+<h2>레갈리스근위 세트<small>85제 · 6부위</small></h2><p class="setfx">4부위 이상 착용: <b>교단의 가호</b> · 받는 피해 20% 감소</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>근위관</b><span>투구 · Lv85</span></td><td class="fx">방 206 · 물리방어 +30% · 특수방어 +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>레갈리스법의</b><span>갑옷 · Lv85</span></td><td class="fx">방 237 · 방패 +30 · HPMAX +50%</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>레갈리스성갑</b><span>장갑 · Lv85</span></td><td class="fx">방 179 · 방패 +30 · 물리방어 +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>근위장화</b><span>신발 · Lv85</span></td><td class="fx">방 179 · SP소모 -30% · HP회복 +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>디미트리의방패</b><span>방패 · Lv85</span></td><td class="fx">방 194 · 방패 +30 · HPMAX +30%</td><td class="mk">닉스코어파편 9개</td></tr><tr><td class="nm"><b>레갈리스교단반지</b><span>신규 장신구 · Lv1</span></td><td class="fx">특수공격 +30% · 특수방어 +30% · 물리방어 +30%</td><td class="mk">닉스코어파편 6개</td></tr></tbody></table></div>
+<h2>85제 무기<small>14종</small></h2><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>레아의유니콘창</b><span>스피어 · Lv85</span></td><td class="fx">공 967 · 물리공격 +30% · 명중 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>디미트리의창</b><span>스피어 · Lv85</span></td><td class="fx">공 967 · 물리공격 +30% · 방패 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>이안의송검</b><span>스워드 · Lv85</span></td><td class="fx">공 1112 · 물리공격 +30% · 기절 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>클레르클레이모어</b><span>스워드 · Lv85</span></td><td class="fx">공 1112 · 물리공격 +30% · 공격속도 +50</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>더글라스의밀검</b><span>나이프 · Lv85</span></td><td class="fx">공 1040 · 물리공격 +30% · 회피 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>하인츠의쌍단검</b><span>나이프 · Lv85</span></td><td class="fx">공 1040 · 물리공격 +30% · 공격속도 +50</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>에레보스화승총</b><span>단총 · Lv85</span></td><td class="fx">공 954 · 특수공격 +30% · 명중 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>볼프강의호신총</b><span>단총 · Lv85</span></td><td class="fx">공 954 · 특수공격 +30% · 공격속도 +50</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>에레보스공성포</b><span>캐논 · Lv85</span></td><td class="fx">공 1202 · 특수공격 +30% · 방패무시 +60%</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>통일전쟁중포</b><span>캐논 · Lv85</span></td><td class="fx">공 1202 · 특수공격 +30% · 기절 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>잊혀진신전의핵</b><span>암흑성 · Lv85</span></td><td class="fx">공 1208 · 특수공격 +30% · HP흡수 +60%</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>오딘의코어조각</b><span>암흑성 · Lv85</span></td><td class="fx">공 1208 · 특수공격 +30% · 명중 +60</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>리파이너의성석</b><span>광휘석 · Lv85</span></td><td class="fx">공 924 · 특수공격 +30% · 공격속도 +50</td><td class="mk">닉스코어파편 10개</td></tr><tr><td class="nm"><b>굴베이그의유산</b><span>광휘석 · Lv85</span></td><td class="fx">공 924 · 특수공격 +30% · 기절 +60</td><td class="mk">닉스코어파편 10개</td></tr></tbody></table></div>
+<h2>코르버스 세트<small>90제 · 5부위</small></h2><p class="setfx">4부위 이상 착용: <b>처형</b> · HP 50% 이하의 적에게 주는 피해 2배</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>코르버스후드</b><span>투구 · Lv90</span></td><td class="fx">방 224 · 명중 +50 · 기절 +50</td><td class="mk">근위관 + 닉스코어파편 19개</td></tr><tr><td class="nm"><b>코르버스암살복</b><span>갑옷 · Lv90</span></td><td class="fx">방 258 · 명중 +50 · HP흡수 +50%</td><td class="mk">레갈리스법의 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>코르버스크로우</b><span>장갑 · Lv90</span></td><td class="fx">방 195 · HP흡수 +50% · 쿨타임 -25%</td><td class="mk">레갈리스성갑 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>코르버스스텝</b><span>신발 · Lv90</span></td><td class="fx">방 195 · 명중 +50 · 회피 +50</td><td class="mk">근위장화 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>듀리안의버클러</b><span>방패 · Lv90</span></td><td class="fx">방 211 · HP흡수 +50% · 방패 +50</td><td class="mk">디미트리의방패 + 닉스코어파편 19개</td></tr></tbody></table></div>
+<h2>붉은마녀 세트<small>90제 · 6부위</small></h2><p class="setfx">4부위 이상 착용: <b>마녀의 생명력</b> · 적 처치 시 20초간 최대 HP 20% 증가</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>붉은마녀헬름</b><span>투구 · Lv90</span></td><td class="fx">방 224 · 특수공격 +25% · HPMAX +50%</td><td class="mk">크루세이더후드 + 닉스코어파편 19개</td></tr><tr><td class="nm"><b>붉은마녀로브</b><span>갑옷 · Lv90</span></td><td class="fx">방 258 · 특수공격 +25% · HPMAX +50%</td><td class="mk">크루세이더코트 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>붉은마녀장갑</b><span>장갑 · Lv90</span></td><td class="fx">방 195 · 특수공격 +25% · HPMAX +50%</td><td class="mk">크루세이더핸드 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>붉은마녀신발</b><span>신발 · Lv90</span></td><td class="fx">방 195 · 특수공격 +25% · HPMAX +50%</td><td class="mk">크루세이더워커 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>리파이너의가호</b><span>방패 · Lv90</span></td><td class="fx">방 211 · 특수공격 +25% · HPMAX +50%</td><td class="mk">닉스의문장 + 닉스코어파편 19개</td></tr><tr><td class="nm"><b>레아의목걸이</b><span>신규 장신구 · Lv1</span></td><td class="fx">HPMAX +50% · 5초당 HP회복 +10% · 적 처치 시 20초간 최대 HP +20%</td><td class="mk">닉스코어파편 6개</td></tr></tbody></table></div>
+<h2>빙해 세트<small>90제 · 6부위</small></h2><p class="setfx">4부위 이상 착용: <b>빙해의 일격</b> · 모든 공격의 피해 1.5배</p><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>빙해의투구</b><span>투구 · Lv90</span></td><td class="fx">방 224 · 방패무시 +50% · 명중 +50</td><td class="mk">템플러헬름 + 닉스코어파편 19개</td></tr><tr><td class="nm"><b>빙해의갑옷</b><span>갑옷 · Lv90</span></td><td class="fx">방 258 · 물리공격 +25% · 방패무시 +50%</td><td class="mk">템플러플레이트 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>빙해의장갑</b><span>장갑 · Lv90</span></td><td class="fx">방 195 · 물리공격 +25% · 기절 +50</td><td class="mk">템플러건틀릿 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>빙해의장화</b><span>신발 · Lv90</span></td><td class="fx">방 195 · 물리공격 +25% · 공격속도 +50</td><td class="mk">템플러그리브 + 닉스코어파편 18개</td></tr><tr><td class="nm"><b>왕국의철벽</b><span>방패 · Lv90</span></td><td class="fx">방 211 · 방패 +30 · 물리방어 +50%</td><td class="mk">케네스방패 + 닉스코어파편 19개</td></tr><tr><td class="nm"><b>이안의맹세</b><span>신규 장신구 · Lv1</span></td><td class="fx">물리방어 +30% · 특수방어 +30% · 피해감소 +10%</td><td class="mk">닉스코어파편 6개</td></tr></tbody></table></div>
+<h2>90제 무기<small>14종</small></h2><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>멜페토의공국창</b><span>스피어 · Lv90</span></td><td class="fx">공 1053 · 물리공격 +38% · 명중 +75</td><td class="mk">디미트리의창 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>닉스의수호창</b><span>스피어 · Lv90</span></td><td class="fx">공 1074 · 물리공격 +38% · 물리방어 +75%</td><td class="mk">멜페토의공국창 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>가면검사의검</b><span>스워드 · Lv90</span></td><td class="fx">공 1211 · 물리공격 +38% · 기절 +75</td><td class="mk">클레르클레이모어 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>빙해의대검</b><span>스워드 · Lv90</span></td><td class="fx">공 1236 · 물리공격 +45% · 기절 +90</td><td class="mk">가면검사의검 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>큐의암살단검</b><span>나이프 · Lv90</span></td><td class="fx">공 1132 · 물리공격 +38% · 쿨타임 -38%</td><td class="mk">하인츠의쌍단검 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>비스트의송곳니</b><span>나이프 · Lv90</span></td><td class="fx">공 1155 · 쿨타임 -45% · HP흡수 +90%</td><td class="mk">큐의암살단검 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>에이블의밀수총</b><span>단총 · Lv90</span></td><td class="fx">공 1039 · 특수공격 +38% · 쿨타임 -38%</td><td class="mk">볼프강의호신총 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>검은공장의걸작</b><span>단총 · Lv90</span></td><td class="fx">공 1060 · 쿨타임 -38% · 명중 +90</td><td class="mk">에이블의밀수총 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>토레즈중포</b><span>캐논 · Lv90</span></td><td class="fx">공 1309 · 특수공격 +38% · 기절 +75</td><td class="mk">통일전쟁중포 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>시즈타이탄주포</b><span>캐논 · Lv90</span></td><td class="fx">공 1336 · 특수공격 +45% · 기절 +90</td><td class="mk">토레즈중포 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>일레느의연구석</b><span>암흑성 · Lv90</span></td><td class="fx">공 1315 · 특수공격 +38% · HP흡수 +75%</td><td class="mk">오딘의코어조각 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>게브의파편</b><span>암흑성 · Lv90</span></td><td class="fx">공 1342 · HP흡수 +90% · HPMAX +90%</td><td class="mk">일레느의연구석 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>테너의성표</b><span>광휘석 · Lv90</span></td><td class="fx">공 1006 · 특수공격 +38% · SP회복 +75%</td><td class="mk">굴베이그의유산 + 닉스코어파편 20개</td></tr><tr><td class="nm"><b>시엔의목소리</b><span>광휘석 · Lv90</span></td><td class="fx">공 1027 · 특수공격 +45% · 쿨타임 -38%</td><td class="mk">테너의성표 + 닉스코어파편 30개</td></tr></tbody></table></div>
+<h2>90제 방어구 · 방패 (세트 없음)<small>11종</small></h2><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>예언자의눈</b><span>투구 · Lv90</span></td><td class="fx">방 229 · 명중 +90 · 기절 +90</td><td class="mk">빙해의투구 + 닉스코어파편 28개</td></tr><tr><td class="nm"><b>장로회의관</b><span>투구 · Lv90</span></td><td class="fx">방 229 · 특수방어 +90% · HPMAX +90%</td><td class="mk">붉은마녀헬름 + 닉스코어파편 28개</td></tr><tr><td class="nm"><b>멜하르의흉갑</b><span>갑옷 · Lv90</span></td><td class="fx">방 263 · 물리방어 +90% · HPMAX +90%</td><td class="mk">빙해의갑옷 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>율리케의성의</b><span>갑옷 · Lv90</span></td><td class="fx">방 263 · 특수방어 +90% · HPMAX +90%</td><td class="mk">붉은마녀로브 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>광전사의흑갑</b><span>갑옷 · Lv90</span></td><td class="fx">방 263 · 물리공격 +45% · 특수공격 +45%</td><td class="mk">코르버스암살복 + 닉스코어파편 30개</td></tr><tr><td class="nm"><b>집행자의손</b><span>장갑 · Lv90</span></td><td class="fx">방 199 · 물리공격 +45% · 기절 +90</td><td class="mk">빙해의장갑 + 닉스코어파편 27개</td></tr><tr><td class="nm"><b>오딘의손길</b><span>장갑 · Lv90</span></td><td class="fx">방 199 · 특수공격 +45% · 쿨타임 -38%</td><td class="mk">붉은마녀장갑 + 닉스코어파편 27개</td></tr><tr><td class="nm"><b>키드의발톱</b><span>장갑 · Lv90</span></td><td class="fx">방 199 · HP흡수 +90% · 물리공격 +45%</td><td class="mk">코르버스크로우 + 닉스코어파편 27개</td></tr><tr><td class="nm"><b>섬광의군화</b><span>신발 · Lv90</span></td><td class="fx">방 199 · 쿨타임 -45% · 공격속도 +60</td><td class="mk">빙해의장화 + 닉스코어파편 27개</td></tr><tr><td class="nm"><b>바질의발걸음</b><span>신발 · Lv90</span></td><td class="fx">방 199 · 회피 +90 · 방패 +90</td><td class="mk">붉은마녀신발 + 닉스코어파편 27개</td></tr><tr><td class="nm"><b>영혼의수호</b><span>방패 · Lv90</span></td><td class="fx">방 215 · 물리방어 +90% · 특수방어 +90%</td><td class="mk">왕국의철벽 + 닉스코어파편 28개</td></tr></tbody></table></div>
+<h2>신규 장신구 (세트 없음)<small>6종</small></h2><div class="tbl"><table class="items"><thead><tr><th>아이템</th><th>효과</th><th>조합</th></tr></thead><tbody><tr><td class="nm"><b>율리케의목걸이</b><span>신규 장신구 · Lv1</span></td><td class="fx">특수공격 +30% · SP소모 -20% · 특수공격 +30%</td><td class="mk">닉스코어파편 6개</td></tr><tr><td class="nm"><b>엘지스의증표</b><span>신규 장신구 · Lv1</span></td><td class="fx">회피 +40 · HPMAX +40% · 방패 +40</td><td class="mk">닉스코어파편 6개</td></tr><tr><td class="nm"><b>일레느의각인</b><span>신규 장신구 · Lv1</span></td><td class="fx">특수공격 +30% · SP소모 -30% · 쿨타임 -15%</td><td class="mk">닉스코어파편 6개</td></tr><tr><td class="nm"><b>클레르의가보</b><span>신규 장신구 · Lv1</span></td><td class="fx">물리공격 +30% · 기절 +20 · 물리공격 +30%</td><td class="mk">이안의맹세 + 닉스코어파편 15개</td></tr><tr><td class="nm"><b>굴베이그의탈리스만</b><span>신규 장신구 · Lv1</span></td><td class="fx">HPMAX +20% · 쿨타임 -30% · 피격 시 20초간 최대 HP +20%</td><td class="mk">일레느의각인 + 닉스코어파편 15개</td></tr><tr><td class="nm"><b>닉스의펜던트</b><span>신규 장신구 · Lv1</span></td><td class="fx">방패 +30 · HP흡수 +40% · 회피 +20</td><td class="mk">레아의목걸이 + 닉스코어파편 15개</td></tr></tbody></table></div>
+</main>
+</body>
+</html>

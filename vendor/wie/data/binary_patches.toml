@@ -1,0 +1,1620 @@
+# Game-specific binary patches consumed by `wie_core_arm::install_binary_patches`.
+#
+# Each `[[entry]]` is either:
+#   - hash-keyed: `hash` is the MD5 of the main guest binary (KTF
+#     `client.bin`, LGT `binary.mod`, etc.). Matched and installed on boot.
+#   - pattern-only (hash omitted): generic patterns that apply to any binary
+#     matching the bytes. Hash-keyed entries take priority.
+#
+# Hook `pc`/`exit_pc` MUST have the Thumb bit (LSB=1); ARM-mode hooks are
+# not supported. Stack offsets are signed and measured from R7 (Thumb
+# frame pointer).
+#
+# A hook is either pc-based (`pc = ...`) or pattern-based (`pattern = ...`),
+# never both. A pc-based hook may carry `flavor = "main" | "vanilla"` (163차) with the
+# same meaning as a patch's (below): installed on that APK flavour only, the site left
+# as the game's own instruction elsewhere, the skip named in the boot log. Pattern tokens are whitespace-separated and each token is one of:
+#   - `??`        — any byte (unnamed wildcard)
+#   - `xx`        — literal hex byte
+#   - `{dst}`     — 1 byte, Thumb1 `SUBS Rn, #imm8` imm8 → `-(b as i8) as i32`
+#   - `{src}`     — same, src offset
+#   - `{len}`     — same, len offset (omit capture + provide `len_offset` to pin)
+#   - `{exit_b}`  — TWO consecutive tokens, encoding a Thumb `B imm11` instruction
+#
+# `inline_copy` fixed fields:
+#   - `len_offset`   — R7-relative offset of the length variable. Required if
+#                      the pattern has no `{len}` capture; forbidden if it does.
+#   - `spill_back`   — after the copy, also write back `dst += len`, `src += len`,
+#                      `len = 0` into their stack slots. Set true when the code
+#                      after the loop re-reads those variables.
+#
+# `inline_copy` requires the loop to use a DOWN-counter (length stored on the
+# stack and decremented to 0 to exit). UP-counter loops are NOT compatible —
+# zeroing the slot just resets the index and the loop restarts.
+#
+# In addition to hooks, an entry may contain `[[entry.patch]]` items that
+# rewrite raw bytes at install time (no SVC, no runtime dispatch). A patch is
+# either pc-based (`pc = 0x...`, requires the entry's `hash`) or pattern-based
+# (`pattern = "..."`, applied at every match).
+#   - `bytes`  : whitespace-separated hex literals. Length >= 1. May not
+#                contain the SVC #0x80 instruction (`80 df` LE).
+#   - `expect` : optional original bytes; same length as `bytes`. Strongly
+#                recommended — install fails fast on a build mismatch.
+#   - `offset` : pattern-only. Bytes are written at `match_addr + offset`.
+#                Default 0. Range `0 ..= pattern_len - bytes_len`.
+#   - `flavor` : pc-only. `"main"` or `"vanilla"` — install on that APK flavour only
+#                (`android_app/flavor.properties` → `build_android.ps1` → rustc
+#                `--cfg hero3_vanilla`; BRANCHES.md). Omit = every flavour. A skipped
+#                patch is neither `expect`-checked nor counted, and the boot log names
+#                it. ⛔ Never on a count-table byte: the item TABLES are shared by design
+#                (77차-B) so a save can move between the flavours.
+# Patch patterns may use `??`, hex literals, and `0b<bits>` BitMatch with no
+# register placeholders. They may NOT use `{dst}`/`{src}`/`{len}`/`{exit_b}`
+# captures or `s`/`d`/`c` BitMatch placeholders — patches have no captures to
+# consume.
+#
+# Install order: patches first, hooks second. Patch ↔ patch and patch ↔ hook
+# SVC overlap fails the install. A hash-keyed entry that produces zero
+# patches/hooks is fatal (likely a stale entry against an updated binary);
+# generic (hash-less) entries warn and continue.
+
+[[entry]]
+name = "Generic compiler library / inline copy patterns"
+
+# Per-frame byte-by-byte memcpy with `src/dst/count` in registers.
+# Loop:
+#   LDRB R3, [Rsrc];   STRB R3, [Rdst]
+#   MOV  R3, Rcount;   ADDS Rsrc, #1; ADDS Rdst, #1; SUBS Rcount, #1
+#   CMP  R3, #0;       BGT loop
+# `Rcount` holds `remaining - 1`, so actual byte count is `Rcount + 1`.
+# Seen as the dominant per-frame hot path in mgh2's `copy_offscreen_to_screen`.
+# Bit-pattern tokens use `s`/`d`/`c` to capture src/dst/count register fields;
+# `exit_pc` is auto-derived as `match_end | 1` (right past the BGT).
+[[entry.hook]]
+kind = "reg_inline_copy"
+pattern = "0b00sss011 78 0b00ddd011 70 0b00ccc011 1c 01 0b00110sss 01 0b00110ddd 01 0b00111ccc 00 2b f7 dc"
+count_offset = 1
+
+# Thumb -O0 byte copy: `*dst++ = *src++` with `dst`/`src`/`len` all on the
+# stack. Src is reached via single-instruction `SUBS R4, R7, #4` (`3c 1f`),
+# so `src_offset` is pinned.
+[[entry.hook]]
+kind = "inline_copy"
+pattern = "3d 1c {dst} 3d 29 68 3c 1f 22 68 08 1c 13 1c 1b 78 03 70 01 32 22 60 01 31 29 60 {exit_b} {exit_b}"
+src_offset = -4
+len_offset = -12
+spill_back = true
+
+# RVCT __rt_memcpy / __rt_memset reached through a Thumb `BX PC` thunk.
+# Prefix `BX PC; NOP; STMFD SP!, {R0, LR}; CMP R2, #N` is specific to the
+# standard library helpers; the trailing `CMP R2` immediate is what
+# distinguishes them (`#3` for memcpy, `#4` for memset).
+[[entry.hook]]
+kind = "memcpy"
+pattern = "78 47 00 00 01 40 2d e9 03 00 52 e3"
+
+[[entry.hook]]
+kind = "memset"
+pattern = "78 47 00 00 01 40 2d e9 04 00 52 e3"
+
+# RVCT Thumb strcpy / strlen with Mycroft's NUL-byte detection
+# (`0xFEFEFEFF`/`0x80808080` magic words).
+[[entry.hook]]
+kind = "strcpy"
+pattern = "70 b5 0b 1c 03 43 03 22 13 40 04 1c"
+
+[[entry.hook]]
+kind = "strlen"
+pattern = "30 b5 03 23 03 40 04 1c 00 2b"
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — client.bin
+# ---------------------------------------------------------------------------
+[[entry]]
+name = "Hero3 client.bin"
+hash = "3792a476ae92663e5dcdf320bb388b31"
+
+# The game's palettised sprite blitter. It never calls MC_grpDrawImage: it takes
+# the screen framebuffer pointer once and rasterises the entire world through
+# this one routine, one indexed pixel at a time. A sampled guest profile of real
+# field play (2026-08-06) puts 26% of ALL guest instructions inside its two inner
+# loops (0x111078 = 17.8%, 0x11138c = 8.0%), which makes it the single largest
+# cost in a frame and the reason heavy maps stutter.
+#
+# The hook replaces the first instruction, so the handler sees the caller's SP and
+# reads the 13 arguments straight off it. Anything it cannot reproduce exactly —
+# 4bpp, rotations, clipped-to-zero widths, unreadable memory — runs the displaced
+# prologue and falls through to the original code. See `binary_patches/blit565.rs`.
+[[entry.hook]]
+kind = "blit565"
+pc = 0x110fe5
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — LGT binary.mod, Ver 01.00.07 (in-game "VER 1.0.4")
+# ★ THIS IS THE ARCHIVE WE SHIP. `app_info` in
+# `android_app/app/src/main/assets/hero3_fixed.zip` reads `Ver:01.00.07` and its
+# `binary.mod` hashes to 6a352944…. The in-game splash says "VER 1.0.4" (an EA Korea
+# build stamp at .rodata 0x5b28c), which is NOT the package version — package 01.00.04
+# shows "VER 1.0.1" in-game. Do not let the two numbering schemes swap the entries:
+# every hook below is verified against 6a352944 and only that binary.
+# ---------------------------------------------------------------------------
+# The LGT carrier build is a DIFFERENT compile of the game (no byte-level overlap
+# with the KTF client.bin — even the save DB name strings differ), so nothing from
+# the KTF entry transfers by address. This entry is the start of the LGT port.
+#
+# The blitter was found the same way the KTF one was: a sampled guest profile of
+# the probe driving the opening battle scene (2026-08-10) puts the top non-idle
+# leaf PCs at 0x2e59c/0x2e5b4/0x2e5c2 (~16%) — the inner loops of one function
+# whose prologue is at 0x2dd7c. Instruction-level comparison against the KTF
+# blitter shows IDENTICAL semantics: 13 args in the same order, fmt 0x0b = 4bpp
+# high-nibble-first / 0xc = 8bpp, index 0 transparent, RGB565 palette stores,
+# pixels = data + 2*palette_len + 9, 4bpp row bytes = ceil(pitch/2), odd srcX
+# starts on a LOW nibble. The one difference is the sprite descriptor: +8/+0xc
+# are direct pointers (KTF: allocator handles) — hence kind = "blit565_lgt".
+[[entry]]
+name = "Hero3 binary.mod (LGT)"
+hash = "6a352944bb43c0789ca9f4b6f0702f4b"
+
+[[entry.hook]]
+kind = "blit565_lgt"
+pc = 0x2dd7d
+
+# `blendRect` — the semi-transparent rectangle fill (MIGRATION_LGT.md §2.17).
+#
+# Profiling a field run put ~21 % of all guest samples inside its inner loop
+# (0x2b790..0x2b816), spread evenly over ~35 instructions: ~44 guest instructions PER
+# PIXEL. Every menu panel, dialogue bar, HUD panel and fade goes through it, so a
+# full-screen 240x320 fade is ~3.4 M guest instructions against ~1.0 M for a whole
+# ordinary field frame. That is the frame-drop the player reported, and it is a
+# different function from the sprite blitter above.
+#
+# `pc` is the OUTER row loop's first instruction (`ldr r4,[sp,#0x28]`, halfword 0x9c0a,
+# branched back to from 0x2b836), so one hook finishes the whole rectangle. Everything
+# it needs is already on the frame there — 0x2b784 has just stored the row count.
+#
+# `exit_pc` is the function's shared tail (`add sp,#0x5c; pop {r4-r7}; pop {r0}; bx r0`).
+# It is reached by the two DO-NOTHING early exits — 0x2b71a when alpha is 0 and 0x2b776
+# when the height is not positive — which is the proof that it cannot depend on any
+# register or stack state the loop would have produced.
+#
+# Not added to the 01.00.04 entry below: that revision's `.text` is 0x144 bytes longer
+# and this address was only ever verified on 6a352944. Locate it there before adding it.
+[[entry.hook]]
+kind = "blend565_lgt"
+exit_pc = 0x2b8d7
+pc = 0x2b787
+
+# The LUT-blended palettised sprite blitter — the CRITICAL-HIT / skill-effect path
+# (MIGRATION_LGT.md §2.20). Third and last of the game's per-pixel loops: `blit565` above
+# draws opaque sprites and `blend565` fills translucent rectangles, so a translucent
+# SPRITE was landing on neither, which is why the player still saw a frame drop whenever a
+# critical flash was on screen after those two shipped.
+#
+# `pc` is the function ENTRY (`push {r4-r7,lr}`, halfword 0xb5f0) — the same shape as the
+# blit565 hook, so declining runs the displaced push and resumes two bytes on. Found by
+# differencing a probe profile of the intro battle (frames ~3000..4200) against one that
+# stops before it: the fight doubles the samples in an evenly spread cluster at
+# 0x2ea38..0x2eba6, which is this function's transform-0 pixel loop.
+#
+# The three tables are the arguments the host cannot derive:
+#   alpha_map = .data byte table at the literal in 0x2ec64 — translates the per-sprite
+#               blend argument into a plane index.
+#   blend_t   = .bss planes at the literal in 0x2ec68, indexed by that translated level.
+#   blend_a   = .bss planes at the literal in 0x2ec6c, indexed by the per-call level; the
+#               guest skips this second stage entirely when that level is > 0xfe.
+# Both plane sets are BUILT AT RUNTIME by the game, so the hook reads them out of guest
+# memory per call rather than caching anything across calls.
+[[entry.hook]]
+kind = "blit_lut565_lgt"
+alpha_map = 0x14001bf
+blend_t = 0x150f8cc
+blend_a = 0x150eccc
+pc = 0x2e8c5
+
+# `tintRect` — the per-pixel LUT COLOUR TRANSFORM of a rectangle already on screen, and
+# the REAL cost of a critical hit (PLAY_FEEDBACK_FIXES.md 49차). It is the function
+# immediately after `blendRect`, starting at 0x2b8f8, and nothing was hooking it.
+#
+# The three hooks above did not touch it because it is not a blitter: it takes no source
+# pixels at all. Measured on the device (S25, vc79) with a per-tick hitch report and the
+# guest PC profiler, which is what finally separated it from everything else:
+#
+#   normal tick   25 ms   inst   0.65 M   blit 569/576   hot pc 0x8=60% (idle)
+#   crit   tick  124 ms   inst  16.05 M   blit 573/582   hot pc 0x2b998 0x2b99a 0x2b99e …
+#
+# Same blits, same ~140 K pixels, same ~1,300 SVCs, 3 allocations, no sound parse — 25x
+# the guest instructions and nothing else moved. Every hot PC sits in 0x2b98e..0x2b9ea.
+# (This also retires the standing §2.20 suspicion that the blitlut565 transform 4~8
+# fallback was to blame: during that same combat the host drew 98.8 % of blits and the
+# transform refusals ran at ~5/s against ~10,600 calls/s.)
+#
+# `pc` is the OUTER row loop's first instruction (`ldr r1,[sp,#8]`, halfword 0x9902,
+# branched back to from 0x2b9fc), so one hook finishes the whole rectangle — the same
+# shape, and the same reasoning, as the blend565_lgt hook above.
+#
+# `exit_pc` is the function's shared tail (`add sp,#0x34; pop {r4-r7}; pop {r0}; bx r0`).
+# It is reached by three DO-NOTHING early exits — 0x2b912 when level is 255, 0x2b97e when
+# the height is not positive, 0x2ba02 likewise on the 32-bit path — which is the proof it
+# cannot depend on any register or stack state the loop would have produced.
+#
+# `blend_a` is the byte table the pixel loop indexes as
+# `LUT + level*1024 + channel*32 + sel`, read from the literal at 0x2baa8. It is the SAME
+# 0x150eccc the blit_lut565_lgt hook above already takes as `blend_a` — an independent
+# cross-check, since that hook derived the identical level/selector layout from a
+# different function. The game builds those planes at runtime, so the hook reads the
+# call's plane out of guest memory rather than caching it.
+#
+# Not added to the 01.00.04 entry below: only ever verified against 6a352944.
+[[entry.hook]]
+kind = "tint_rect565_lgt"
+blend_a = 0x150eccc
+exit_pc = 0x2ba9d
+pc = 0x2b983
+
+# The "동기화" popup, killed at its source (PLAY_FEEDBACK_FIXES 4번).
+#
+# Player: "그냥 로딩끝나면 별다른 안내없이 나타나면 될거같아. 팝업을 자꾸띄우려고하니까 이거
+# 이슈가 발생하는거같아." Repro: enter the warehouse, leave to the slot screen, come
+# back -> the box appears; then paging in the cash shop makes it reappear every turn,
+# because the client replays its whole open sequence (04 3d / 05 3d / 05 14 / 05 3f) per
+# page turn.
+#
+# THE HANDLER (cat4 op 0x3d, the save-commit ack), verified byte for byte:
+#   0x483a  ldrb r3,[r5,#0xb]      ; status
+#   0x483e  cmp  r3,#0
+#   0x4840  bne  0x485a            ; `0b d1`  <- patched
+#   0x4842..0x4858   status == 0: netbox().flag(+0xc) = 1, then strcpy(box+0x10, msg+0xd)
+#                    -- this ARMS a latch; the cat5 handler (0x13834) turns it into the box
+#   0x485a..0x486a   status != 0: flag = 0, showModal(mode 3) -- a blocking WAIT
+#   0x486c..0x4884   BOTH arms fall here and the client SENDS `05 3d 00`
+#
+# Patching the branch to an unconditional `b 0x486c` skips both arms: no latch, no modal,
+# and the `05 3d 00` still goes out byte for byte. That send is the frame that asks the
+# server for the warehouse list, so a cat5 round trip ALWAYS follows -- and the cat5
+# handler's latch-not-set path is what writes boxMode = 0, i.e. it CLOSES the
+# "슬롯 정보 서버에 저장중입니다." WAIT the client raised before uploading. Net effect is
+# exactly what the player asked for: loading ends, the list appears, nothing to dismiss.
+#
+# Encoding: target 0x486c, so offset = 0x486c - (0x4840 + 4) = 0x28, imm11 = 0x14,
+# Thumb B = 0xE014 = `14 e0`. `expect` pins the original `bne`, so a different build fails
+# the install instead of corrupting an unrelated instruction.
+#
+# SCOPE: 0x4840 is reachable only from cat == 4 && op == 0x3d. The SAME latch is also armed
+# by cat5 op 0x06 -- the 오브 결합 result toast at 0x13abc -- which keeps working untouched.
+# The ack itself is NOT withheld (33차 infinite-load); only the box is skipped.
+#
+# ⚠ RESIDUAL RISK, watch for it: if any path ever leaves the mode-3 WAIT up with no cat5
+# frame behind it, there is no longer a dismissible box to replace it. Remove this one entry
+# to revert.
+[[entry.patch]]
+pc = 0x4840
+bytes = "14 e0"
+expect = "0b d1"
+
+# ── 16TH ORB ROW: the 소켓확장 item's home (2026-08-14) ──────────────────────────
+#
+# The player asked for the socket-expansion item to be picked out of the NETWORK
+# WAREHOUSE and pointed at a piece of equipment, "오브처럼". The game already has that
+# exact flow and it is gated on ONE byte: `0x7674 cmp r3,#0x10` reads the WIRE-FED
+# category of the highlighted warehouse row, and a match is the only thing that makes the
+# context menu 4 rows instead of 3 — row 3 being 오브결합 (flat label table
+# 0x5b404 + panel*0x10e + row*0xa). Nothing downstream re-reads the category: the row-3
+# handler at 0x724e just stores the row's u64, 0x7608 validates only the TARGET
+# (cat <= 0xc), and the sender at 0xc474 re-reads nothing. So the server can serve the
+# socket item AS an orb and the whole picker comes for free — no client UI work.
+#
+# What is NOT free is the row's NAME. The item panel resolves it as `dbPtr[cat][idx]`
+# out of `res/dat/i16_dat`, which ships 15 orbs (0x00..0x0e), and the orb table is
+# `alloc(0xb4<<1)` = 360 B = exactly 15 x 0x18 with NO bounds check in any reader
+# (0x532e8, 0x4f164). Serving idx 0x0f against the stock binary is a wild pointer read
+# on the very first list draw. `tools_re/strip_orb_slot_text.py` appends a real 16th
+# record (소켓확장) to the asset; these three bytes are what make the guest SEE it.
+#
+# ⚠ ALL FOUR SHIP TOGETHER — the asset row and these three patches. `expect` pins each
+# original byte, and a mismatch is a FatalError, so a drifted build refuses to boot
+# instead of quietly overrunning the heap. That is the intended failure mode.
+#
+# ★ Why patches and not an edit to `binary.mod`: this entry is keyed by that file's MD5.
+# Editing it would stop matching, and every hook below — blit565, blend565, blitlut565 —
+# would silently stop installing, costing a third to two-thirds of the guest-instruction
+# budget. Patching at load time keeps the hash intact.
+#
+# Row count for category 0x10, in the 19-byte per-category const table at VA 0x5e474
+# (`ldrsb` at 0x53eca = the parse loop's entry guard, and at 0x53f86 = its continue test).
+[[entry.patch]]
+pc = 0x5e484
+bytes = "10"
+expect = "0f"
+
+# The orb table's backing allocation, a hardcoded immediate — `movs r0,#0xb4` feeding a
+# `lsls #1` at 0x53748..0x53752. 0xb4<<1 = 360 = 15 x 0x18; 0xc0<<1 = 384 = 16 x 0x18.
+# Unlike the 13 equipment tables (0x5370e) this one does NOT derive its size from the
+# count table, which is why the byte above is necessary but not sufficient.
+[[entry.patch]]
+pc = 0x53748
+bytes = "c0"
+expect = "b4"
+
+# Teardown bound, `cmp r3,#0xf` at 0x52744 — its own hardcoded copy of the count. Left at
+# 15 the 16th row's two strings are never freed. Harmless per session, wrong on principle,
+# and one byte to fix.
+[[entry.patch]]
+pc = 0x52744
+bytes = "10"
+expect = "0f"
+
+# ── LEGACY ITEMS, ARMOUR (cat 0..2 + the 133차 half of cat 3): `"` Lv 73~99 rows ──
+#
+# `tools_re/add_legacy_items.py` (wired through patch_asset.py, LAST in the chain)
+# appends the LEGACY_ITEMS_70_99.md §5 rows — the hell-mode drop table. Same contract
+# as the reaver rows: the FILE is not enough, this signed-byte count table is what the
+# parse loop believes (`ldrsb` @ 0x53eca / 0x53f86) and the equipment tables derive
+# their allocation from it (0x5370e). ⚠ SHIP WITH THE ASSET ROWS — a count above the
+# file is a wild read on the first inventory draw. Rows and counts ship on BOTH
+# flavours (77차-B: the item tables never fork; only the drop hook is flavour-gated).
+#
+#   cat 0x00 투구  48 -> 56 (+8: 세트 6 + 전설 2)
+#   cat 0x01 갑옷  54 -> 63 (+9: 세트 6 + 전설 3)
+#   cat 0x02 장갑  48 -> 57 (+9: 세트 6 + 전설 3)
+[[entry.patch]]
+pc = 0x5e474
+bytes = "38"
+expect = "30"
+[[entry.patch]]
+pc = 0x5e475
+bytes = "3f"
+expect = "36"
+[[entry.patch]]
+pc = 0x5e476
+bytes = "39"
+expect = "30"
+
+# ── LEGACY BOOTS + LEGACY ITEMS (cat 3 +1 +7): `@섬광의군화` and the `"` 신발 rows ──
+#
+# 131차-C appended one boots row (`tools_re/add_legacy_boots.py`); 133차 appends the
+# six set boots and one legend on top (`add_legacy_items.py` skips its own 섬광의군화 —
+# the shipped experiment row IS §5.4's legend, and one file must not carry the name
+# twice). 49 pristine + 1 + 7 = 57.
+[[entry.patch]]
+pc = 0x5e477
+bytes = "39"
+expect = "31"
+
+# ── REAVER WEAPONS + LEGACY ITEMS (cat 4..11, +1 +4 / shield +1 +7) ──
+#
+# One `{리버…` row per weapon file (`tools_re/add_reaver_weapons.py`, Lv 65,
+# white+20%) plus the 133차 legacy ladder + legend (`add_legacy_items.py`: three
+# ladder rungs and one Lv99 legend per weapon, six set shields + one legend for
+# cat 0x0b). Same contract as the 16th orb: the FILE is not enough, the
+# signed-byte per-category count table at VA 0x5e474 is what the parse loop
+# (`ldrsb` @ 0x53eca / 0x53f86) believes. Equipment tables derive their
+# allocation from this table (0x5370e), unlike the orb table, so these eight
+# bytes are the only guest edits.
+#
+# ★★ 77차-B: these rows and the count bytes ship on **both** `main` and
+# `vanilla`. The only flavour difference is the `reaver_drop_lgt` hook below
+# (skipped when rustc has `--cfg hero3_vanilla`). Stripping the table was
+# what froze 게임시작 on a main save (63차 allocator death).
+#
+# ⚠ SHIP WITH THE ASSET ROWS. A count of 35 against a 31-row file is a
+# wild read on the first inventory draw.
+#
+#   cat 0x04..0x0a 무기  30 -> 35 (+1 리버, +3 사다리, +1 전설)
+#   cat 0x0b       방패  26 -> 34 (+1 리버, +6 세트, +1 전설)
+[[entry.patch]]
+pc = 0x5e478
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e479
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47a
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47b
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47c
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47d
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47e
+bytes = "23"
+expect = "1e"
+[[entry.patch]]
+pc = 0x5e47f
+bytes = "22"
+expect = "1a"
+
+# ── BOSS ACCESSORIES + LEGACY ITEMS (cat 0x0c +2 +9) ──
+#
+# Two `{` boss rows (`tools_re/add_boss_accessories.py`, dropped only by
+# 크레이지타이탄 / 다크니스이라 through the `reaver_drop_lgt` hook below) plus the
+# nine `"` legacy accessories (133차). Same contract as the reaver rows: the count
+# byte for cat 0x0c (VA 0x5e474 + 0xc) must tick with the file. 40 + 2 + 9 = 51.
+# ⚠ SHIP WITH THE ASSET ROWS.
+[[entry.patch]]
+pc = 0x5e480
+bytes = "33"
+expect = "28"
+
+# ── TOWER MATERIAL (cat 0x0e +1): `{닉스코어의 파편` (2026-09-12) ──
+#
+# One row appended to i14_dat by `tools_re/add_tower_material.py` — the 하늘성 reward
+# from floor 21 up, and the input to a forge recipe the player will add later. The
+# name is not in the shipped data at all, so this is a brand-new material and needs
+# THREE bytes, not one: unlike the thirteen EQUIPMENT tables (which take their size
+# from the count table at 0x5370e), each consumable category's backing allocation is
+# a hardcoded immediate, and the teardown loop carries its own copy of the count.
+#
+#   0x5e482  count table entry for cat 0x0e, read by the parse loop's `ldrsb`
+#            (0x53eca entry guard / 0x53f86 continue test).       46 -> 47
+#   0x53730  `movs r0,#0xe6` + `lsls #2` = 920 = 46 x 0x14 B.
+#            47 x 0x14 = 940 = 0xeb << 2.                       0xe6 -> 0xeb
+#   0x526a6  teardown bound `cmp r3,#0x2e` (its block's stride is
+#            `movs r2,#0x14` at 0x52680, which is what identifies it as cat 0x0e).
+#                                                                46 -> 47
+#
+# ⚠ ALL FOUR SHIP TOGETHER (asset row + these three). Any subset serves idx 0x2e out
+# of a 920-byte allocation — a wild read on the first material list draw. `expect`
+# pins each original byte and a mismatch is a FatalError, so a drifted build refuses
+# to boot rather than overrun the heap.
+#
+# ★ Adding the row cannot leak the material into wild drops: every reader of the
+# count table is the parse/alloc/teardown family (xref in the tool's docstring), the
+# generic drop selector 0x38cf4 walks EQUIPMENT only, and consumable drops name an
+# explicit (cat, idx) in the drop record.
+[[entry.patch]]
+pc = 0x5e482
+bytes = "2f"
+expect = "2e"
+[[entry.patch]]
+pc = 0x53730
+bytes = "eb"
+expect = "e6"
+[[entry.patch]]
+pc = 0x526a6
+bytes = "2f"
+expect = "2e"
+
+# ── 138차: cat 0x0f 조합서 89 -> 117 rows (the 하늘성 recipes, `tools_re/add_tower_recipes.py`) ──
+#
+# The asset writes 78 recipes over the network rows 0x27..0x58 and appends 28, so the
+# category grows 0x59 -> 0x75. The same three bytes the 85차 material row needed, for
+# cat 0x0f:
+#
+#   0x5e483  count table entry for cat 0x0f (the parse loop's `ldrsb`).   0x59 -> 0x75
+#   0x5373c  `movs r0,#0xb2` + `lsls #4` = 2848 = 89 x 0x20 B.
+#            117 x 0x20 = 3744 = 0xea << 4.                                0xb2 -> 0xea
+#   0x526f2  teardown bound `cmp r3,#0x59` (after its `asrs r3,r3,#24` at 0x526f0). 0x59 -> 0x75
+#
+# ★★★ 117 AND NOT MORE: the parse loop keeps the ROW INDEX in a signed byte (0x53ef4/0x53ef8
+# `lsls/asrs #24` before the `muls`, 0x53f84..0x53f8a for the continue test) — row 128 would
+# index in front of the table, so `ldrsb -> ldrb` alone could never lift the ceiling.
+# ⚠ ALL FOUR SHIP TOGETHER (the asset rows + these three): a 117 count over the shipped
+# 89-row member reads past its end, and the 89-row count over the new member hides 28 rows.
+# `patch_asset --check` byte-compares i15_dat, so a stale asset is refused before a build.
+# Both flavours: the table does not split (77차-B).
+[[entry.patch]]
+pc = 0x5e483
+bytes = "75"
+expect = "59"
+[[entry.patch]]
+pc = 0x5373c
+bytes = "ea"
+expect = "b2"
+[[entry.patch]]
+pc = 0x526f2
+bytes = "75"
+expect = "59"
+
+# ── 151차: 특수조합 목록의 이름·효과 칸 — 조합서가 16장을 넘으면 사라지던 원작 버그 ──
+#
+# The smith's 특수조합 list (window 13, painter 0x238dc) draws the focused cell's 이름/효과
+# box only when `cursor < N % 16` (0x23e16..0x23e38; N = the recipe count `(s8)grid[0x18ed]`,
+# the cursor `CHAR+0x9c72+page`). That is the LAST page's test run on EVERY page: with 39
+# recipes only cells 0..6 of each page show text, and when N is a multiple of 16 no cell
+# ever does (probe A/B: 39 recipes, 3 pages, every cell). The shipped game rarely held more
+# than 16 recipes; the 78 하늘성 조합서 make it the normal case. The fix counts from the page
+# the entry read at 0x23e60 uses (`[sp+0xd0]`, the byte of CHAR+0x9c71):
+#
+#   0x23e20  ldr r3,[sp,#0xd0] · lsls r3,r3,#4 · ldr r5,[sp,#0xcc] · subs r3,r2,r3 · nop x4
+#
+# => `cursor < N - page*16`. r2 = N (0x23e1e), r5 = the cursor and r4 (0x23e34) as before,
+# so everything from 0x23e30 on runs unchanged. Both flavours: the shipped painter's bug.
+[[entry.patch]]
+pc = 0x23e20
+bytes = "34 9b 1b 01 33 9d d3 1a c0 46 c0 46 c0 46 c0 46"
+expect = "13 1c 00 2a 00 da 0f 33 1b 11 1b 01 33 9d d3 1a"
+
+# ── DAMAGE 32-BIT: the player's hit carries past i16, the number draws in full (2026-09-18) ──
+#
+# Every damage value in the shipped game passed through a signed halfword, and a raw hit
+# of 32768+ read as NEGATIVE at the fold before the cap compare and took the
+# "minimum damage" branch — the 「1」 the player reported. Headless (scene 243, a def-0
+# player under atk-32767 monsters): the same frames deal 1 unpatched and the cap patched.
+#
+# Two functions make damage and both end the same way (`lsls/asrs #16` → `cmp #0; bgt`
+# → `movs #1` → cap literal):
+#   0x38518  monster → player. Kept 16-bit downstream (the player's HP is i16 and no
+#            monster needs to exceed it); only the fold is moved AFTER the compare so a
+#            big hit clamps instead of wrapping, and the cap literal becomes 32767.
+#   0x4bca0  player → monster. Made 32-bit end to end: the 3-hit accumulator
+#            (0x4be5c), the fold before the compare (0x4be76), the i16 return (0x4be8e),
+#            the cap literal (0x4beac = 9,999,999), both callers' folds (melee 0x4e128 /
+#            0x4e1b6, projectile 0x4e860 / 0x4e8d8+0x4e8dc), `hitMonster`'s u16 entry
+#            fold (0x3863e / 0x38642) and its display store (0x386fc: `str [sp+4] →
+#            rec+0xfc` instead of `strh → rec+0xaa`).
+# The floating-number drawer 0x1ff8 then reads that 32-bit slot: both monster callers
+# pass `&rec+0xfc` (0x39b2e, 0x2a574) and its eight `ldrsh` loads / two `strh` stores
+# become `ldr` / `str`. The digit renderer 0x1e6c was 32-bit already (headless: it drew
+# 「1234567」 from a poked slot and 「65534」 from a real hit).
+# ★ 0x2a574 reaches its record through `base+0x9c90` (= `CHAR+0x9cb8`), which is an ALIAS
+#   of the `CHAR+0x9cbc` creature array and not a second one (104차-B code review): the map
+#   loader stores the one `MC_knlCalloc(count * 0x158)` result into both words
+#   (0x373c8 / 0x373cc, stub 0x1400264 = svc 0x76 Calloc), and every other writer of
+#   `base+0x9c90` copies `[base+0x9c94]` into it (0x3106, 0x37234, 0x3b6e0, 0x3e926 —
+#   the last through `base + 0x9bad + 0xe7`). Same records, same 0x158 stride (the call
+#   site's own `movs r2,#0xac; lsls #1`), so the sentinel block below covers this caller.
+#   Runtime: `wie_probe --dump-mem 0x150d740:8` read `40146070 40146070` on three frames
+#   across a 243 -> 244 warp.
+#
+# `rec+0xfc` (display) and `rec+0x100` (virtual HP, see the dmg_apply hook) are spare:
+# sentinels in +0xf8..+0x107 survived 1000 frames of combat, kills and respawn
+# re-initialisation on 80/80 records with every frame pixel-identical, while a control
+# sentinel at +0x40 was wiped by the re-init.
+#
+# ⚠ Two hooks complete this (`dmg_apply_lgt`, `dmg_disp_lgt`, below): the i16 HP writer
+# needs the value clamped, and the drawer's PLAYER caller passes a halfword whose
+# neighbour is the timer. ⛔ Do not ship the byte patches without both hooks.
+#
+# ★ 163차: the two CAP LITERALS (0x385cc 32767 · 0x4beac 9,999,999) are MAIN ONLY. The raise
+#   began with the reaver weapons (vc204: 9999 → 32199) and went on for the 개정판 (102차), so
+#   vanilla keeps the game's own 9,999 both ways. Every fold patch stays on both flavours: a
+#   vanilla hit past 32767 now clamps to 9,999 instead of reading as the shipped 「1」.
+[[entry.patch]]
+pc = 0x38586
+bytes = "18 1c c0 46"
+expect = "1b 04 18 0c"
+[[entry.patch]]
+pc = 0x3859c
+bytes = "c0 46 c0 46"
+expect = "00 04 00 0c"
+[[entry.patch]]
+pc = 0x385a0
+bytes = "03 1c c0 46"
+expect = "03 04 1b 14"
+[[entry.patch]]
+pc = 0x385cc
+flavor = "main"   # 163차: the cap 32767 is 개정판; vanilla keeps the game's 9,999
+bytes = "ff 7f 00 00"
+expect = "0f 27 00 00"
+[[entry.patch]]
+pc = 0x4be5c
+bytes = "c0 46 c0 46"
+expect = "1b 04 1b 0c"
+[[entry.patch]]
+pc = 0x4be76
+bytes = "23 1c c0 46"
+expect = "23 04 1b 14"
+[[entry.patch]]
+pc = 0x4be8e
+bytes = "c0 46 c0 46"
+expect = "03 04 18 14"
+[[entry.patch]]
+pc = 0x4beac
+flavor = "main"   # 163차: the cap 9,999,999 is 개정판; vanilla keeps the game's 9,999
+bytes = "7f 96 98 00"
+expect = "0f 27 00 00"
+[[entry.patch]]
+pc = 0x4e128
+bytes = "c0 46 c0 46"
+expect = "00 04 00 0c"
+[[entry.patch]]
+pc = 0x4e1b6
+bytes = "0a 1c c0 46"
+expect = "0a 04 12 14"
+[[entry.patch]]
+pc = 0x4e860
+bytes = "c0 46 07 1c"
+expect = "00 04 07 0c"
+[[entry.patch]]
+pc = 0x4e8d8
+bytes = "3a 1c"
+expect = "3a 04"
+[[entry.patch]]
+pc = 0x4e8dc
+bytes = "c0 46"
+expect = "12 14"
+[[entry.patch]]
+pc = 0x3863e
+bytes = "c0 46"
+expect = "12 04"
+[[entry.patch]]
+pc = 0x38642
+bytes = "c0 46"
+expect = "12 0c"
+[[entry.patch]]
+pc = 0x386fc
+bytes = "01 98 fc 33 18 60"
+expect = "80 88 aa 33 18 80"
+[[entry.patch]]
+pc = 0x39b2e
+bytes = "fc 33"
+expect = "aa 33"
+[[entry.patch]]
+pc = 0x2a574
+bytes = "fc 33"
+expect = "aa 33"
+[[entry.patch]]
+pc = 0x2002
+bytes = "1b 68"
+expect = "1b 5e"
+[[entry.patch]]
+pc = 0x2036
+bytes = "33 68"
+expect = "73 5e"
+[[entry.patch]]
+pc = 0x2054
+bytes = "33 68"
+expect = "b3 5e"
+[[entry.patch]]
+pc = 0x2076
+bytes = "33 68"
+expect = "73 5e"
+[[entry.patch]]
+pc = 0x2090
+bytes = "33 68"
+expect = "b3 5e"
+[[entry.patch]]
+pc = 0x20b2
+bytes = "33 68"
+expect = "73 5e"
+[[entry.patch]]
+pc = 0x20ce
+bytes = "33 68"
+expect = "b3 5e"
+[[entry.patch]]
+pc = 0x20ec
+bytes = "33 68"
+expect = "33 5f"
+[[entry.patch]]
+pc = 0x2112
+bytes = "32 60"
+expect = "32 80"
+[[entry.patch]]
+pc = 0x2280
+bytes = "33 60"
+expect = "33 80"
+
+# ── DMG APPLY: clamp for the i16 HP writer + the record's virtual HP (2026-09-18) ──
+#
+# `hitMonster 0x3863c`, at `0x386cc ldr r2,[sp,#4]` — past the MISS branch (kinds 1/2
+# skip to 0x38702) and before `rsbs r1,r2 / bl 0x38620`. With the folds above gone,
+# `[sp+4]` is the raw 32-bit hit; the hook performs the load with `min(raw, 32767)` and,
+# when the record's `rec+0x100` word holds a host-seeded virtual remainder, takes the hit
+# off that word and keeps `hp_cur = 32767 * remaining / total` (`rec+0x104`, 102차-B —
+# proportional, never 0 while anything remains) itself, the game applying 0; so the target
+# box's bar drains like any other monster's, and the record dies through the game's own
+# path once the word is spent. The DoT tick (`0x39c0a`) enters the same way. Reads of the
+# record are FAIL SOFT (an unreadable one gets the clamped hit and one warn line — 104차-B).
+# `r5` = the record (`adds r5,r0,#0` at 0x3864a). Ships on both flavours.
+[[entry.hook]]
+kind = "dmg_apply_lgt"
+pc = 0x386cd
+exit_pc = 0x386cf
+
+# ── DMG DISP: the player's number through the widened drawer (2026-09-18) ──
+#
+# `0x1ff8(x, y, flag, &num, &kind, &timer)` — monsters pass flag 1 and `&rec+0xfc`;
+# the player's caller (`0x4a7a6`) passes flag 0 and `&base+0x210`, a halfword whose
+# neighbour `+0x212` is the timer. The hook sign-extends that halfword into the `.bss`
+# tail word `0x1512ff0` and points `r3` there, then performs the displaced push.
+[[entry.hook]]
+kind = "dmg_disp_lgt"
+pc = 0x1ff9
+
+# ── PLAYER HP PAST 32767 (142차, 2026-09-30, player decision) ────────────────────
+#
+# The max HP (`CHAR+0xec`) is an s32 that `ComputeMaxHP 0x49000` never clamps, but the
+# CURRENT HP (`CHAR+0xf2`) is an i16 and every `hp = hp_max` restore stores the max's low
+# half — a max past 32767 (최대HP% options stack: 붉은마녀 5부위 alone is +250 %) wraps the
+# current HP negative. Like the damage cap (102차), the answer is a virtual number: the
+# game is handed `min(T, 32767)` as its max and keeps a proportional GAUGE in its i16; the
+# true current/max live in `wie_util::stats`, kept by the replaced `addHP` (the one writer
+# every hit, heal, regen and lifesteal goes through) and shown by the status screen's two
+# loads. `T <= 32767` = the original game. The hooks also carry the 85제 set effects that
+# act on damage taken (템플러 · 레갈리스근위). See `binary_patches/playerhp.rs`. Both flavours.
+[[entry.hook]]
+kind = "hp_max_lgt"
+pc = 0x4902b       # str r0,[r4,#0x38] — ComputeMaxHP's store
+exit_pc = 0x4902d
+[[entry.hook]]
+kind = "hp_add_lgt"
+pc = 0x4b9c1       # addHP's push {lr} — the whole function, returns via LR
+[[entry.hook]]
+kind = "hp_disp_cur_lgt"
+pc = 0x40ca5       # ldrsh r2,[r3,r4] — status screen current HP
+exit_pc = 0x40ca7
+[[entry.hook]]
+kind = "hp_disp_max_lgt"
+pc = 0x40ce7       # ldr r2,[r3] — status screen max HP
+exit_pc = 0x40ce9
+
+# ── ABSORB: 흡수 on a hit past 32767 (163차, 2026-10-05) ───────────────────────────────
+#
+# The 흡혼 passive, the 흡혈의 오브 and every 흡수 option add into stat block `+0x6e`, and ONE
+# function turns it into HP: `computeAbsorb 0x4b978(block, i16 dmg)` = `pct × dmg / 200`, 0 when
+# negative, at most `hp_max / 5`. Its two callers (0x4de90 — every basic attack and skill hit —
+# and the projectile twin) still folded the damage to i16 right before the call after 102차
+# made it 32-bit, so a hit of 32768+ absorbed 0 (report: 「소울마스터 암흑 · 업화 · 흡혼 · 흡수오브
+# 전부 흡수 안 됨」; headless: 1000 → 1584 HP with a small attack, 998 → 998 past 32767).
+# The two patches pass the whole damage; the hook replaces the function (64-bit product, cap a
+# fifth of the TRUE max). Inside the i16 it is the original function. Both flavours.
+# `binary_patches/absorb.rs`.
+[[entry.patch]]
+pc = 0x4e210
+bytes = "01 1c c0 46"        # adds r1,r0,#0 ; nop  (melee: [sp+0x38] whole)
+expect = "01 04 09 14"       # lsls r1,r0,#16 ; asrs r1,r1,#16
+[[entry.patch]]
+pc = 0x4e936
+bytes = "39 1c c0 46"        # adds r1,r7,#0 ; nop  (projectile: r7 whole)
+expect = "39 04 09 14"       # lsls r1,r7,#16 ; asrs r1,r1,#16
+[[entry.hook]]
+kind = "absorb_lgt"
+pc = 0x4b979       # computeAbsorb's push {r4-r7,lr} — the whole function, returns via LR
+
+# ── 150차 레거시 장신구: THE THIRD OPTION (2026-10-01, player decision) ─────────────────
+#
+# The 11 reworked accessories (cat 0x0c idx 0x28..0x32) each gained a THIRD option, one
+# source of truth `tools_re/acc_options.py` -> the generated `wie_util::acc_options`. The
+# asset row cannot carry it: the item-DB parser `0x539a8` reads a record's u16 length and
+# throws it away, consuming fixed fields (exactly two option pairs), so a longer record
+# shifts every later row — and the world init re-parses the DB inside the very guest call
+# that runs the first recompute, so a host write into a row would always lose the race.
+#
+# 1) The `Stat` thirds (특수공격 · 물리방어 · 방패(블록) · 쿨타임 · 물리공격 · 회피) go through the
+#    game's own `addStat 0x4ee34` inside the wear recompute `0x4f014` — the only place any
+#    option becomes a stat (its six `addStat` calls and nine derived getters are all in
+#    there). Its slot loop has the slot's (s16) cat/idx in r1/r2 at `0x4f130 ldr r0,[sp,#0x48]`,
+#    the 장비장착 PREVIEW substitution already applied, r5 = the slot, r6 = the stat block
+#    (CHAR+0xb4). All 19 callers (wear, preview, unequip, load 0x5166e, stat points, buffs,
+#    useItem, the state machine) pass this loop. `addStat` is a pure 16-bit add into
+#    accumulators the same call zeroed: order-free, idempotent. The hook performs the
+#    displaced load; guard r6 == stat block && r5 < 9, else only the load. A/B switch =
+#    `stats::THIRD_OPTS_OFF` (the probe's `--third-opts 0`; the app never sets it). The host
+#    effects (공격속도 · 피해감소 · 주는 피해 · the timed max-HP buffs) are not stats and are
+#    ignored here. ★ 163차: MAIN ONLY with the three summary painters below (장신구 3번째 옵션
+#    is 개정판; vanilla cannot obtain the 11 and keeps the game's own loop). `binary_patches/thirdopt.rs`.
+[[entry.hook]]
+kind = "acc_third_stat_lgt"
+pc = 0x4f131       # ldr r0,[sp,#0x48] — r1/r2 = this slot's (s16) cat/idx
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4f133  # lsls r3,r1,#2
+
+# 2) The bag summary box's first line — 「레벨%d %s/%s%d」 (0x5ceb4), which the rework turns
+#    into 「레벨1 장신구/저항0」 — shows the third option's summary instead (user decision ④).
+#    The painter `0x41680` (가방 page 2 and the shop sell grid, `0x1f78c` -> mode 7) sprintf's
+#    the line into SP+0x114 (a 0x34-byte local), fetches the graphics context, then
+#    `0x41e86 adds r5,r0,#0` sits between that and strlen: r2 = strlen's address (⛔ never
+#    touched), r4 = the bag record (cat/idx u16 at +0x3b6/+0x3b8). The hook performs the
+#    `adds` and, for a table accessory, writes the EUC-KR summary + NUL (<= 51 bytes,
+#    <= 134 px in font 1) over the formatted line; strlen and the game's drawer paint it.
+#    Line 2 (the orb) and every other item are the game's. FAIL SOFT.
+#    `binary_patches/accsummary.rs`.
+[[entry.hook]]
+kind = "acc_summary_lgt"
+pc = 0x41e87       # adds r5,r0,#0 (after the line's sprintf and the gfx-context call)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x41e89  # add r0,sp,#0x114 -> strlen -> drawString
+
+# The same line in the online single bag (panel 0 of the 네트워크창고 screen, painter
+# `0x11aac`, format 「레벨%d %s / %s%d」 0x5c49c): buffer = r6 (`0x1234a add r6,sp,#0x118`,
+# the hook checks it), r4 = the record, r2 = strlen.
+[[entry.hook]]
+kind = "acc_summary_online_lgt"
+pc = 0x124e7       # adds r5,r0,#0
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x124e9  # adds r0,r6,#0 -> strlen -> drawString
+
+# And in the network warehouse (panel 1, painter `0x10958`): the item is the cached 20-byte
+# wire row (`CHAR+0xa57c`, r5 = row+0x10, cat/idx = s8 [r5-8]/[r5-7]), the buffer SP+0x104,
+# r1 = strlen. Displaces `adds r4,r0,#0`. ⚠ Today no such row can exist: the 올리기 arm refuses
+# any equipment above tier 3 (`0x6f94 ldrb [row+0x10]; cmp #3; ble` -> 「아이템 등급이 영웅
+# 이상인 아이템은 올릴 수 없습니다」, probe-confirmed on 율리케) and the 11 are tier 5 (`"`) / 4
+# (`{`). Installed anyway (verified with a poked row) so the three summary painters agree if
+# that gate is ever lifted; with no table row it only performs the displaced `adds`.
+[[entry.hook]]
+kind = "acc_summary_warehouse_lgt"
+pc = 0x113e7       # adds r4,r0,#0
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x113e9  # add r0,sp,#0x104 -> strlen -> drawString
+
+# 3) 레아의목걸이's option 2 is a NEW option id 0x78 「5초당 HP회복 +20%」 (`acc_options::
+#    REGEN_STAT`: the host heals 20 % of the true max HP every 5 s of play in the field;
+#    `addStat` ignores the id). The detail window names it `InGame_txt[80 + id]` = row 200
+#    (`tools_re/add_regen_label.py`) and appends the '%' through `0x6d34(buf, id)`:
+#        0x6d38  cmp r1,#0x12 / bhi ret         ; an id above 0x12 gets none
+#        0x6d3c  movs r0,#1 / lsls r0,r1        ; then 1<<id against three masks —
+#                0xf (ids 0..3) · 0x1e0 (5..8) · 0xf8<<11 (0x0e..0x12)
+#        0x6d56  sprintf(buf, "%s%c", buf, '%')
+#    Its 18 callers (the detail window, the summary box's orb line, the online screens) all
+#    pass an `ldrsb` of a row / orb byte. The range test becomes `cmp r1,#0x78 / beq 0x6d56`
+#    (0x78 appends '%'); every other id falls through to the SAME three mask tests, where
+#    0x13..0x1f shift into bits 19..31 (no mask has them) and a register shift of 32 or more
+#    gives 0 (ARMv4T LSL by register — `arm32_cpu`'s `shift_lsl` does the same), so the old
+#    `bhi` was redundant for every value a caller can pass: the rule is unchanged for all
+#    ids but 0x78. 4 bytes, both flavours; `expect` pins both original halfwords.
+[[entry.patch]]
+pc = 0x6d38
+bytes = "78 29 0c d0"
+expect = "12 29 12 d8"
+
+# ── SKILL SP COST vs. THE RAISED LEVEL CAP (2026-09-22, player decision) ──────
+#
+# The SP cost is `baseSP * (100 - level - spCostReduction) / 100`. `level` (CHAR+0xe2,
+# i16) is subtracted as a percent, so the 99 cap (111차) makes `100 - 99 = 1` and any
+# 현자의/SP소모감소 gear (addStat 0x0e -> CHAR+0x11e) drives it negative. Two guest sites
+# read `level` with an `ldrsh`: the spend fn 0x4b864 (which already floors the deducted
+# amount to 5 at 0x4b8d0) and the skill-window "SP소모:%d" display 0x43dxx (no floor, so
+# it printed the raw negative). See `wie_core_arm::binary_patches::spcost`.
+#
+# 1) Clamp the level fed to the formula to 70 (the original single-play cap) at BOTH sites.
+#    Real level is untouched; the SP curve is what the game was tuned for. `exit_pc` is the
+#    instruction after the displaced `ldrsh`. No-op for level <= 70, so both flavours.
+[[entry.hook]]
+kind = "sp_cost_level_spend_lgt"
+pc = 0x4b8b1       # ldrsh r3,[r6,r0]
+exit_pc = 0x4b8b3
+
+[[entry.hook]]
+kind = "sp_cost_level_disp_lgt"
+pc = 0x43e37       # ldrsh r4,[r0,r5]
+exit_pc = 0x43e39
+
+# 2) Floor the DISPLAYED number at what the spend path deducts, IN THE DISPLAY'S UNITS,
+#    so a build that still underflows (reduction > 30) shows no negative. ★ 129차: the
+#    display divides by 10 once more than the spend path (0x43e54..56) and the SP bar is
+#    (CHAR+0xf8)/10 over 100 — the spend floor of 5 is half a displayed point, so the
+#    displayed floor is 0 (`spcost::DISP_FLOOR`), the game's own truncation (the
+#    original's 단도 reads "SP소모:0"); the first revision's "5" was ten times the real
+#    deduction. User decision 2026-09-22: "0", as the original shows every skill that
+#    "does not consume" — a "0.5" tenths display was tried and rejected, as was raising
+#    the real floor. Displaces `adds r2,r0,#0` right before the `sprintf` of
+#    `"SP소모:%d"` (fmt @ 0x5deb0).
+[[entry.hook]]
+kind = "sp_cost_disp_floor_lgt"
+pc = 0x43e5d       # adds r2,r0,#0
+exit_pc = 0x43e5f
+
+# ── SAVE-SLOT LABEL BOX (2026-09-23, 130차 — twelve save slots) ─────────────────
+#
+# The shell's slot-list row painter 0x53c0 draws a 12x12 key-cap box at the right end of
+# the centred "SLOT n" label (`0x5494 subs r1,#6` = left edge, `0x5496 movs r3,#0xc` =
+# width, then 0x3e15 drawRect). The save-slot window (`wie_android::slotwindow`) relabels
+# the three rows up to "SLOT 12", and a two-digit number does not fit that cap — the `1`
+# sat outside the box. The hook re-does the displaced `subs` and the skipped `movs` with
+# the width following the label's digit count (r5 = the label string, untouched since
+# 0x53cc): 12 for one digit, 20 for two, same right edge. Both flavours; fail soft.
+# See `wie_core_arm::binary_patches::slotlabel`.
+[[entry.hook]]
+kind = "slot_label_box_lgt"
+pc = 0x5495        # subs r1,#6
+exit_pc = 0x5499   # after `movs r3,#0xc` — the handler writes r1 AND r3
+
+# ── 공격속도 / 스킬사용속도 (2026-09-23, DT — the new stat; 132차 · 132차-C rules) ─────
+#
+# The player's actions are POSE SCRIPTS driven by one clock: the field state machine
+# `0x5089c` bumps `base+0x9ba0` once per tick (0x508bc) and each arm ends its pose step
+# when that counter equals `0x4aee0(kind, facing-1, mode)` — which is just
+# `sprite->frames[dir][pose] - 1` (`0x1b780`). Probe trace of one basic attack: state 2
+# runs the script step (pose 2, 3 ticks), state 4 the follow-through (pose 1, 4 ticks),
+# eight ticks including entry.
+#
+# ⛔⛔ 131차 first wrote "shortening that return value is the ONE place that shortens an
+# action, and it cannot lose the hit because damage resolves when a step COMPLETES". Both
+# halves were REFUTED by measurement (131차-B/D, 132차-C): a shorter answer dealt ZERO
+# damage, and a hit is a FRAME EVENT — `0x4b92c(counter)`'s switch (`0x57c3c`) applies it
+# on fixed frame numbers. What speeds an action up is the COUNTER, dragged (below).
+#
+# `0x4aee0` has six callers, all in the player's own state machine: 0x50a94 (state 2),
+# 0x510ba/0x510fe (state 4) — sped up; 0x50e74 (state 3, staggered), 0x5101c (state 8,
+# knocked back), 0x50ec8 (state 16, dying) — NOT. The hook sits on the function's tail
+# and reads the live state byte (`0x150d63e`) to tell them apart.
+#
+# ⛔ The counter is dragged but NEVER past `frames - 1`: five sites compare it for
+# EQUALITY, so an overshoot freezes the player mid-swing (three of those sites are
+# being-hit / knockback / death), and the last tick is left to the game's own `+= 1` —
+# a pose that completes in the tick it started loses its hit (132차).
+#
+# Displaces `lsls r0,r0,#0x18`; `exit_pc` is the `asrs r0,r0,#0x18` that finishes the
+# guest's own (i8) narrowing, so the handler leaves the value pre-shifted. Off unless the
+# host arms `wie_util::stats::ATTACK_SPEED_PCT`, and off is byte-identical — so it ships
+# ★ 163차: MAIN ONLY with its three siblings (공격속도 is a 개정판 option; vanilla has no item
+# that carries it, and keeps the game's own frame clock). See `wie_core_arm::binary_patches::atkspeed`.
+# ⛔⛔ THIS HOOK NEVER CHANGES THE ANSWER. Two measured failures say why (2026-09-23):
+# shortening the answer here, or on the leaf `0x1b780` that every reader shares, made the
+# attack deal ZERO damage. The hit lands on the tick the pose counter REACHES a particular
+# value, so the answer stays and the COUNTER is dragged towards it — which this handler does
+# right here, where `frames` for the pose running this very tick is in `r0`, clamped to it.
+# ⛔ An earlier revision did that from a second hook on `0x508bc` against a length recorded
+# by the PREVIOUS tick; `0x508bc` runs before the arm asks, so any pose that got shorter
+# (another weapon, another FACING, the next step of a skill script) had its counter stepped
+# over — no completed pose, no hit test, no damage. That hook is gone.
+[[entry.hook]]
+kind = "atk_speed_lgt"
+pc = 0x4af13       # lsls r0,r0,#0x18 (tail of 0x4aee0)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4af15  # asrs r0,r0,#0x18
+
+# ★★★ 132차-C — and the frame EVENTS that drag steps over. A hit does not come from a pose
+# ending: every tick the state machine hands the CURRENT counter to one function,
+# `0x4b92c(frame)`, called only from here, whose switch (`0x57c3c`) applies the attack on
+# fixed frames (traced: pose 2 on frame 2, pose 3 on 1 AND 4, pose 4 on 2). A tick dragged
+# from c to c' dispatched c' only, so a combo's 2nd and 3rd attacks lost their hits at speed.
+# This hook runs `0x4b92c` for each skipped frame first, then the displaced call itself —
+# every frame gets its event once, as unhooked. With the stat off it is exactly the `bl`.
+[[entry.hook]]
+kind = "atk_event_lgt"
+pc = 0x50e2d       # bl 0x4b92c (both halfwords displaced: fa f7 7e fd)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x50e31  # b 0x51248 — past the 4-byte call
+
+# And the other four ticks: state 4's RECOVERY countdown. Its arm does not use the pose
+# comparison at all — `0x51062`/`0x51086` just tick `CHAR+0x251` (= `r6+0x19d`) down by one
+# and call the idle reset `0x50774` when it reaches 0. Measured by diffing CHAR across one
+# attack: 4, 3, 2, 1, 0. ★ Unlike the pose sites this test is `<= 0`, not `==`, so taking
+# off more than one is safe by construction.
+[[entry.hook]]
+kind = "atk_recover_lgt"
+pc = 0x51069       # subs r3,#1  (sub-mode 3)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x5106b  # strb r3,[r2]
+
+[[entry.hook]]
+kind = "atk_recover_lgt"
+pc = 0x5108d       # subs r3,#1  (sub-mode 4, same countdown)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x5108f
+
+# ── NO AUTOSAVE ON 제련 / 일반조합 (2026-09-15, player decision) ──────────────
+#
+# The player has fought a chronic save-corruption bug for many builds ("몇번째 계속
+# 해결하려하는데 안되는"). Their decision: stop the game from writing the save the
+# instant a 제련/조합 commits, and let the result persist on the ordinary 5-minute
+# autosave / a manual SAVE / the on-quit save instead. Trading a lost 제련 on a hard
+# crash for a save that stops being rewritten dozens of times a session is exactly the
+# trade they asked for — "그냥 이거 ... 자동 저장되는 로직 제거".
+#
+# Both commit routines run the SAME 4-step chain (serialiseSave → writeSaveRecord →
+# slotSummary → writeSaveRecord) inline and then fall through to a UI call. Each patch is
+# ONE forward branch that jumps over the whole chain and lands on that trailing call, so
+# the window still closes and the item is still in memory — only the disk write is gone.
+# The bag-compaction call that PRECEDES the chain (`0x55048`) is kept in both.
+#
+#   제련  commit `0x25234`: chain at 0x254a0..0x254c2 (72차 recorded 0x254ae/0x254c0).
+#            0x254a0 `ldr r3,[pc,#0x94]` (serialiseSave|1) → `b 0x254c6` (the `bl 0x201cc`).
+#   조합  commit `0x24fd4`: chain at 0x25164..0x25182 (72차 recorded 0x2516e/0x2517c).
+#            0x2515e `movs r3,#0` (serialiseSave out-len init) → `b 0x25186` (past the chain).
+#
+# Encoding: refine 0x254c6-(0x254a0+4)=0x22, imm11=0x11 → `11 e0`. craft
+# 0x25186-(0x2515e+4)=0x24, imm11=0x12 → `12 e0`. `expect` pins each original halfword so
+# a drifted build refuses to boot rather than branch into the wrong place.
+#
+# ⚠ The slot-list SUMMARY (the `slotSummary`+SlotSave half) is skipped too, but it is
+# rewritten by the next real save, the `04 3d` ack, and the 72차-D summary_repair_poll —
+# so a 제련-then-crash cannot leave a 빈슬롯. ⚠ The 재료가방 (94차) relies on a save
+# landing while a crafting window is open to make in-flight materialised units durable;
+# with these gone, that durability drops to the 5-minute autosave (a crash mid-window can
+# lose the pushed-back materials — a LOSS, never a dup, which is the accepted direction).
+# ⛛ ORB결합 has no guest save of its own — its host-armed retry is removed in emulator.rs.
+[[entry.patch]]
+pc = 0x254a0
+bytes = "11 e0"
+expect = "25 4b"
+[[entry.patch]]
+pc = 0x2515e
+bytes = "12 e0"
+expect = "00 23"
+
+# ── REAVER DROP: one extra roll per hard-boss kill (2026-09-03, replaces vc204's table write) ──
+#
+# The loot routine `0x38e70` rolls `(s8)enemy[0xbe]` times against the enemy's own copy
+# of its 20-byte drop record (`enemy+0x13c`), compacts the hits into `sp+0x28` (cats) /
+# `sp+0x14` (idxs) with the count at `sp+0xc`, then `0x38ffc cmp r7,#0 / ble 0x39036`
+# decides whether to spawn. The record has ONE specific-item slot (the boss's stock 종결)
+# and the per-map table it comes from is rebuilt on every map load and copied at spawn,
+# so no host table write can add a second item — vc204's `reaver_drop_writes` never
+# reached a live record (wrong table layout, species-indexed into an object-indexed
+# table, and once per process).
+#
+# `pc` is that `cmp r7,#0` (halfword 0x2f00). The hook appends a `{리버…` row for the
+# eight `{` bosses at `reaverdrop::RATE_PCT` using the game's own `random()` (state at
+# .data 0x140011c/0x1400120) — one draw for the win, a second `rand(0,7)` for WHICH of
+# the eight rows (any boss, any reaver) — then performs the displaced compare by resuming at
+# `exit_pc`/`skip_pc`. A second, independent roll gives 크레이지타이탄 `{타이탄의 파편` and
+# 다크니스이라 `{검은 눈물` (`reaverdrop::BOSS_ACCESSORIES`, cat 0x0c idx 0x28/0x29).
+# `exit_pc` (0x39000, spawn) or `skip_pc` (0x39036, the shared tail `add sp,#0x64`).
+# Stock loot is untouched; the reaver is an independent per-kill chance on top.
+[[entry.hook]]
+kind = "reaver_drop_lgt"
+pc = 0x38ffd
+exit_pc = 0x39001
+skip_pc = 0x39037
+
+# ── TOWER SPECIES: the host's monster triple over the scene header's (88차, 2026-09-12) ──
+#
+# `parseScnHeader 0x14284` stores the scene's species triple (`header[3..5]`) as three
+# words at `base+0x9e3c` (`0x142ae..0x142b6`), and the spawn loop reads them a few hundred
+# instructions later inside the same `loadScene` call — no host tick in between. The hook
+# sits on the function's last load, `0x142da ldr r0,[r6]` (r6 = `base+0x9e1c`, the map-id
+# word it returns), after every store it makes: when `wie_util::stats::TOWER_SPECIES` names
+# the scene being loaded (`(u16)[base+0x9e08]`, stored by `loadScene` at `0x15f9c` before
+# the call), the three words are replaced; then the displaced load is performed and
+# `exit_pc` (0x142dc) resumes into the epilogue. Fires on every scene load, declines on any
+# scene it was not armed for. ⛔ Ships on BOTH flavours (`hook.rs` skips only the reaver).
+[[entry.hook]]
+kind = "tower_species_lgt"
+pc = 0x142db
+exit_pc = 0x142dd
+
+# ── TOWER SPAWN CAP: a floor spawns exactly its count (145차, 2026-09-30) ──
+#
+# The halls have twenty spawn points and a floor's `count` asks for fewer. The host used to
+# trim the rest AFTER the load by writing 0 HP into them, and the game ran its own death for
+# each — monsters dropping dead on arrival (user: "입장하자마자 내가 때리지도 않았는데 죽는
+# 버그"). The spawn LIST is built by one loop in the map parser (`0x1587e..0x158ee`): per
+# point it reads type/x/y, takes `species = words[type]`, and `0x158b0 cmp r0,#0xff; beq
+# 0x158e0` skips an empty slot; otherwise it appends and bumps `MAP+0x34` (`[r7+0x34]`,
+# mirrored in `[sp+0xa4]`), the count the records, AI and draw loop are sized by. The hook
+# displaces that compare: past `wie_util::stats::TOWER_SPAWN_CAP`'s cap, for the scene
+# `loadScene` is loading (`(u16)[base+0x9e08]`), a point takes the empty-slot path. It
+# performs the compare by resuming at `exit_pc` (0x158b4, append) or `skip_pc` (0x158e0);
+# neither path reads the flags before setting its own. Frame check: `[sp+0xc0] == base` and
+# `[sp+0xa4] == [r7+0x34]`. Unarmed / other scene / failed check = the game's own compare.
+# ⛔ Ships on BOTH flavours, like the species hook. `binary_patches/towerspawn.rs`.
+[[entry.hook]]
+kind = "tower_spawn_cap_lgt"
+pc = 0x158b1
+exit_pc = 0x158b5
+skip_pc = 0x158e1
+
+# ── BAG BOXES: container-category items go to the HOST'S boxes, not the bag (2026-09-14) ──
+#
+# 오브가방·재료가방·소비가방 are three host-owned containers that open from one bag cell
+# each (`BAG_TYPES_FEASIBILITY.md`). "It goes into the box even when the bag is full"
+# needs the item never to touch a bag cell, and the game places everything through
+# exactly two functions — `giveItem 0x52b14` (drops `0x3d592`, shops `0x1e754`, scripts
+# `0x469e4`/`0x493fe`, crafting `0x54a68`/`0x5593c`, 오브원석 `0x551da`) and
+# `addItemToInventory 0x131d0` (warehouse `05 04` `0x13cec`, cash `05 40` `0x13e4c`).
+# Both begin with `push {r4-r7,lr}`, so each hook sits on the function ENTRY: when
+# `wie_util::stats::bagbox_offer` takes the item the hook returns the caller the success
+# the game would have (`1` / "0 left over") via `lr`; when it declines — feature off, box
+# full, ring full, a bag-item cell itself — it emulates the push and runs the game's own
+# code (`resume_past_push`). Ships on BOTH flavours; with `BAGBOX_ACCEPT == 0` the game
+# is byte-for-byte itself. `binary_patches/bagbox.rs`.
+[[entry.hook]]
+kind = "bagbox_give_lgt"
+pc = 0x52b15
+
+[[entry.hook]]
+kind = "bagbox_add_lgt"
+pc = 0x131d1
+
+# ── BAG BOXES, 3단계: the quest scripts' hand-ins read the box too (2026-09-15) ──
+#
+# A script asks about items through ONE helper, `0x3bcf0(cat, idx, u16* out, mode)`, and
+# it walks the BAG: `mode != 0` counts (the `fe <cat><idx><n>` condition `0x3bf5a`, and
+# op `0x12` before it takes, `0x3d4aa`), `mode == 0` removes (`0x3d4e8`, where `out`
+# points at the operand byte `n` itself). 19 scripts hand in cat-0x0e materials and two
+# hand in cat-0x12 consumables, and after 92차 those live in the host's boxes — so
+# without these two the quest says "재료가 부족합니다" while the 재료가방 is full.
+#
+#   * `bagbox_take_lgt` sits on the function ENTRY (the same `push {r4-r7,lr}` the two
+#     intake hooks displace): in take mode, when the box holds all `n`, it spends them
+#     there and returns through `lr` — the bag walk never runs. Anything else falls
+#     through to the game (`resume_past_push`).
+#   * `bagbox_count_lgt` sits on the function's ONE exit, `0x3bdd2 add sp,#0x18`: in
+#     count mode it ADDS the box's units to the `*out` the bag walk produced, then
+#     performs that `add sp` itself and resumes at `exit_pc` (the `pop`).
+#
+# Ships on BOTH flavours, like the intake pair; with the boxes off `bagbox_count` reads 0
+# and `bagbox_take` refuses, so the game is byte-for-byte itself. `binary_patches/bagbox.rs`.
+[[entry.hook]]
+kind = "bagbox_take_lgt"
+pc = 0x3bcf1
+
+[[entry.hook]]
+kind = "bagbox_count_lgt"
+pc = 0x3bdd3
+exit_pc = 0x3bdd5
+
+# ★★★ 125차-C — smith / 일반조합 count and spend from the boxes, not a bag push.
+# countOf `0x55534` is hooked at its EXIT (`0x555d0 add sp,#0xc`): r0 already holds the
+# bag total (`asrs r0,r5,#16`). Cat/idx live at `[sp+8]`/`[sp+4]`. The hook adds the
+# box mirror and performs that `add sp` itself.
+# Spend `0x555e0(cat, idx, n)` is the matching ENTRY (`push {r4-r7,lr}`): debit the box
+# first; JumpTo(lr) when it covers all n (else the bag walk would fail after a debit);
+# remainder in r2 + resume when the box covers only some. Both flavours.
+[[entry.hook]]
+kind = "bagbox_count_of_lgt"
+pc = 0x555d1
+exit_pc = 0x555d3
+
+[[entry.hook]]
+kind = "bagbox_spend_lgt"
+pc = 0x555e1
+
+# ★★★ 127차 (2026-09-22) — a boxed unit is used THROUGH the box's own bag cell, so a full
+# bag is no obstacle (user: *"가방이 꽉차있어도 쓸 수 있어야해 … 3종가방 내에서 바로사용되는
+# 로직으로"*). The host writes the unit's record over the 오브가방/재료가방/소비가방 cell
+# (bag 1, cells 1–3 — its own cell, never a free one), drives the game's own 사용하기 /
+# hotkey / revive on it, and arms `wie_util::stats`'s restage knob with the bag-item
+# record it overwrote. Every consumption ends in `removeItem 0x5340c(tab, slot, n)`:
+# the use tail (`0x55450` → `0x53648`), the hotkey/귀환 tail (`0x46784` → `0x53648`), the
+# revive 예 (`0x3b58e`), the quest take — and each of those then runs the compactor
+# `0x5380c` (오브원석's tail also SAVES). This ENTRY hook (`push {r4-r7,lr}`, like the intake
+# pair) answers the armed cell while the record there still reads as the staged item: it
+# writes the bag-item record back and returns through `lr`, so the cell is never empty,
+# no compaction moves anything, and the in-tail save captures a whole bag. Every other
+# call — knob off, another cell, the record already something else — is the game's own
+# removal, byte for byte (`resume_past_push`). Both flavours. `binary_patches/bagbox.rs`.
+[[entry.hook]]
+kind = "bagbox_restage_lgt"
+pc = 0x5340d
+
+# ★★ 166차 (2026-10-06) — a FULL BAG no longer refuses a purchase the box has room for
+# (user: *"일반 가방이 꽉 차 있으면 소비가방에 자리가 있어도 구매가 거절되는 내용도
+# 수정해줘"*). `0x3c0e4(cat, idx, n)` is the game's "can the BAG take n of this?" check —
+# empty cells x 99 plus a matching stack's room, bag cells only — and its only two callers
+# place through `giveItem` right after it: the NPC shop (`0x1e70c`, then the 99-call loop
+# at `0x1e754`) and script op 0x14 (`0x3d54a`, then `0x3d592`). This ENTRY hook (`push
+# {r4-r7,lr}`, emulated by `resume_past_push`) takes out of `n` what the host's box will
+# take (`wie_util::stats::bagbox_room_for` — the same merge/stack/ring arithmetic the
+# intake will run) and lets the game judge the REST against the bag: the split the gives
+# then make. A box that takes it all leaves 0 = "fits". No side effects in the function, so
+# r2 is the only change; box off / not a box item = the game's own check, byte for byte.
+# Both flavours. `binary_patches/bagbox.rs`.
+[[entry.hook]]
+kind = "bagbox_room_check_lgt"
+pc = 0x3c0e5
+
+# ★★ 166차 — the same for the CASH SHOP, which has its own gate. Its OK-on-a-row arm
+# (`0x72b2`) asks `isBagFull 0x535e8` at `0x72dc` and, when the bag is full, refuses at
+# `0x7398` unless a stack of the row's item already sits in the bag — never true for a box
+# item. Every row it refuses that way is granted through `addItemToInventory` (the `05 40`
+# grant `0x13e4c`, or the engine's `05 04` for 소켓확장), whose entry hook takes it whole into
+# the box. This hook sits on the shift right after the call (`0x72e0 lsls r0,r0,#0x18`,
+# flags dead by the `cmp` at `0x72e4`), re-answers "full" with "not full" when the box
+# (`bagbox_room_for`) takes the row's whole count, re-does the shift and resumes at
+# `exit_pc` — the game's own not-full path (the 여행가방 cap test, then the confirm).
+# Unreadable row, equipment, a full box: the game's answer. Both flavours.
+[[entry.hook]]
+kind = "bagbox_cash_gate_lgt"
+pc = 0x72e1
+exit_pc = 0x72e3
+
+# ── 2회차 TRANSITION: the host hears it run (135차-B, 2026-09-24) ─────────────────────
+#
+# Ending window 18's KEY handler `0x3b420` calls `0x3af2c` as its first command, for ANY
+# key, and it is that function's only caller: `0x3af2c` IS the new-game-plus transition
+# (walks the bag removing the quest items · 그리폰의피리 · its recipe, writes difficulty = 1
+# at `0x3b0bc`, warps to scene 83). Two host features hang off it — 124차 (the boxes give up
+# what the bag gave up) and 133차 (a hardcore clear opens 헬, which needs the difficulty the
+# playthrough had BEFORE this function writes 1). They used to watch window 18 rise and
+# fall on a 5-iteration poll, and the window lives only until the next key: probe-measured
+# 3 frames under 3-frame mashing (135차 §2 ②), so a mashed ending skipped both, silently.
+# This ENTRY hook (`push {r4-r7,lr}`, emulated by `resume_past_push`) latches "a transition
+# ran" + the byte as it found it into `wie_util::stats::note_ending_transition` and changes
+# nothing; the worker handles the counter, which does not expire, on its own poll.
+# Both flavours (the box half is flavour-free). `binary_patches/ending.rs`.
+[[entry.hook]]
+kind = "ending_transition_lgt"
+pc = 0x3af2d
+
+# ── ENDING WINDOW LINE: 「헬모드로 재시작합니다」 after a hardcore clear (140차, 2026-09-29) ──
+#
+# Window 18's ENTER (`0x3f5e2`) calls the common-widget installer `0x46b7c(0x13)`, whose
+# switch picks the `InGame_txt` row the widget paints: `0x46cec movs r3,#0xaa` = row 170
+# 「하드코어 모드로;재시작합니다」, then `b 0x46cc4` stores it (`str r3,[sp,#0x2c]`) for the
+# text getter. A constant row says 하드코어 whatever the clear was on, and since 133차 a
+# hardcore clear restarts in 헬. This hook re-does the `movs` with the row the difficulty
+# byte (`0x150ddc8`, still the PRE-clear value here — the transition that rewrites it is
+# the window's KEY) calls for: 0 keeps the game's row, anything else takes row 199 =
+# 「헬모드로 재시작합니다」 (`tools_re/add_hell_restart_label.py`, right after the 공격속도
+# label at 198). MAIN ONLY — `hook.rs` skips it under `hero3_vanilla`, where a hardcore clear
+# really does restart in 하드코어. FAIL SOFT: an unreadable byte keeps the game's row.
+# `binary_patches/endinglabel.rs`.
+[[entry.hook]]
+kind = "ending_label_lgt"
+pc = 0x46ced        # movs r3,#0xaa  (re-done by the handler)
+exit_pc = 0x46cef   # b 0x46cc4      (str r3,[sp,#0x2c] -> text getter)
+
+# ── STAT-SUM CAPS: 명중 255 · 쿨타임 감소 70 % ──
+#
+# 1) The wear recompute `0x4f014` sums passives + worn 명중 options into a halfword
+#    (`0x4f7c6 ldrh r3,[r7]`) and stores it as a BYTE (`0x4f7ca strb r3,[r0]` → stat+0x2c),
+#    which the player-hit roll reads back with `ldrb` (`0x4bf64`). 256 wraps to 0 — 코르버스
+#    4 (150) + 검은공장의걸작 (90) + 조준 (20) = 260 read as 4, so stacking 명중 past 255 made
+#    the player MISS more (ITEM_BALANCE_AUDIT_156.md §0). The hook re-does the `strb` with the
+#    sum clamped at 255 (`wie_util::stats::HIT_SUM_CAP`) and leaves r3 clamped, so the game's
+#    own `lsls/lsrs #24` + `strh r3,[r1]` copy right after it stores the same 255. Sums of
+#    0..=255 are byte-identical; a negative halfword keeps the game's truncation.
+#    ★ 163차: MAIN ONLY. 사신의 오브 (addStat 0x09, strength 8 = +120 % per full item) is an
+#    ORIGINAL orb, so vanilla reaches the wrap too — and vanilla keeps the game's own rule
+#    (user: 「신규템으로 인한 밸런스 관련 패치했던거 적용되면 안되는거야」). `binary_patches/statcap.rs`.
+[[entry.hook]]
+kind = "respawn_rate_lgt"
+pc = 0x3a711
+exit_pc = 0x3a713
+
+[[entry.hook]]
+kind = "exp_rate_lgt"
+pc = 0x4d3df
+exit_pc = 0x4d3f3
+
+[[entry.hook]]
+kind = "hit_sum_clamp_lgt"
+pc = 0x4f7cb        # strb r3,[r0]   (re-done, clamped)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4f7cd   # ldr r1,[sp,#8]
+
+# 2) The cast path (`0x4fdb8` → `0x4bb82`) sets a skill's cooldown to `desc × (100 − sum) /
+#    100` with a SIGNED compare: `0x4bbe0 ldrsh r2,[r0,r3]` loads the addStat(0x11) word
+#    (r0 = base+0xfc = CHAR+0x124, r3 = 0), `0x4bbe2..e4` computes `100 − r2`, and a sum of
+#    100 % or more is a one-tick cooldown (`0x4a30c`). The new items carry 25..45 each
+#    (섬광 45 + 오딘 38 + 굴베이그 30 = 113 %). The hook re-does the `ldrsh` with the sum
+#    capped at 70 (`wie_util::stats::COOLDOWN_REDUCE_CAP_PCT`, user decision 2026-10-10);
+#    the host's cooldown ring applies the same cap (`items::read_cd_reduce_pct`).
+#    ★ 163차: MAIN ONLY (user: 「바닐라에서는 쿨감 제한 적용되면안돼」). 폭풍의 오브 (addStat 0x11,
+#    strength 6 = +90 % per full item) is ORIGINAL, so the cap did bite on vanilla.
+#    `binary_patches/statcap.rs`.
+[[entry.hook]]
+kind = "cooldown_cap_lgt"
+pc = 0x4bbe1        # ldrsh r2,[r0,r3]  (re-done, capped)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4bbe3   # movs r3,#0x64
+
+# ── 160차 (2026-10-03): 방어% 상한 500 · 공격력/방어력이 i16 을 넘는다 ─────────────────
+#
+# `TOWER_100_CLEAR_AUDIT.md` T1 · T2 (user: «T1 - MAX치 상한자체를 해제 … 32767 넘을수있어야해 ·
+# T2 - 방어 % 상한을 둘꺼야» → 500). `binary_patches/statwide.rs`. ★ 163차: MAIN ONLY — the
+# 금강/정령 orbs are original (+225 % per full item), so the 500 cap changed vanilla's
+# defence; vanilla keeps the game's own getters.
+#
+# 1) The two defence getters load the summed 물방% (`stat+0x54`) / 특방% (`stat+0x58`) with
+#    `ldrsh r3,[r0,r2]` and compute `(armour + 10) × (100 + sum) / 100 + 체력`. A full 금강 /
+#    정령 orb is +225 % on EVERY worn item, so three made the wearer take 1 from every monster
+#    in the tower. Re-done with the sum capped at `wie_util::stats::DEF_PCT_CAP`.
+[[entry.hook]]
+kind = "def_pct_cap_lgt"
+pc = 0x4cf73        # ldrsh r3,[r0,r2]  (물방% — re-done, capped)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4cf75   # asrs r4,r4,#0x10
+[[entry.hook]]
+kind = "def_pct_cap_lgt"
+pc = 0x4cfb3        # ldrsh r3,[r0,r2]  (특방%)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4cfb5
+
+# 2) All four getters end in `lsls r0,r0,#0x10 ; asrs r0,r0,#0x10` — the result truncated to
+#    i16, so a value past 32767 went NEGATIVE (a defence of 37,391 read as -28,145 and every
+#    hit became 32,767). The hook saturates instead (the game's halfword and its screens top
+#    out at 32767) and publishes the true value when the caller is the wear recompute's FINAL
+#    pass (`0x4f736` · `0x4f750` · `0x4f76e` · `0x4f78c` — the saved lr on the getter's frame).
+[[entry.hook]]
+kind = "stat_wide_lgt"
+pc = 0x4ce4f        # ATT1 getter 0x4cdb4: lsls/asrs r0,#0x10
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4ce53   # add sp,#4
+[[entry.hook]]
+kind = "stat_wide_lgt"
+pc = 0x4ceff        # ATT2 getter 0x4ce64
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4cf03
+[[entry.hook]]
+kind = "stat_wide_lgt"
+pc = 0x4cf93        # P.DEF getter 0x4cf64
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4cf97   # pop {r4,r5}
+[[entry.hook]]
+kind = "stat_wide_lgt"
+pc = 0x4cfd3        # M.DEF getter 0x4cfa4
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4cfd7
+
+# 3) The two combat readers take the true value back (`stats::player_wide` — only while the
+#    halfword is what the published value saturates to; otherwise the halfword itself).
+#    Monster -> player `0x38518`: `ldrsh r6,[r3,r2]` (r3 = base+0xde 물리 / base+0xe2 특수).
+#    Player -> monster `0x4bca0`: `ldrsh r2,[r3,r0]` (stat + 2·weapon + 0x4a), two arms.
+[[entry.hook]]
+kind = "def_read_wide_lgt"
+pc = 0x38557        # ldrsh r6,[r3,r2]
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x38559   # adds r3,r5,#0
+[[entry.hook]]
+kind = "atk_read_wide_lgt"
+pc = 0x4bdad        # ldrsh r2,[r3,r0]  (normal arm)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4bdaf   # movs r5,#0x2a
+[[entry.hook]]
+kind = "atk_read_wide_lgt"
+pc = 0x4be13        # ldrsh r2,[r3,r0]  (crit arm)
+flavor = "main"   # 163차: 개정판 only — vanilla keeps the game's own instruction
+exit_pc = 0x4be15
+
+# ── 127차: 오브원석 no longer demands a FREE BAG CELL for the orb it rolls ─────
+#
+# The 오브원석 arm of `useItem` (`0x55194`) asks `isBagFull 0x535e8` (findSlot with cat 0 —
+# an empty-cell search) BEFORE `giveItem(0x10, rand(0,14), -1)` and refuses with the
+# game's bag-full message (`0x2bc`) when there is none. The orb it gives goes to the host's
+# 오브가방 through the intake hook, which needs no cell — so with a full bag the item was
+# refused for a cell the orb would never have used. The check is redundant with the arm's
+# own test of `giveItem`'s return (`0x551de`..`0x551e4`: 0 = the same `0x2bc` refusal): when
+# the box is off or full and the bag is full, `giveItem`'s own `findSlot` fails and the
+# arm refuses exactly as before. So the `bl` becomes `movs r0,#0` (+ nop) and the arm
+# falls through to `giveItem`. 4 bytes, both flavours; `expect` pins the original call.
+[[entry.patch]]
+pc = 0x551c2
+bytes = "00 20 c0 46"
+expect = "fe f7 11 fa"
+
+# ── LEVEL CAP 70 -> 99 (111차, 2026-09-19, player decision) ──────────────────
+#
+# The original title levelled to 70 in single play and on to 99 only through the
+# carrier's network PvP, which no longer exists. The player asked for 99 in single play:
+# "싱글로 99까지 레벨 제한 해제". Everything the level touches is a closed formula, not a
+# table, so the cap is FIVE immediates and nothing else has to grow:
+#
+#   doLevelUp 0x4d690:   level = (s16)CHAR+0xe2 + 1;
+#     0x4d6a8  cmp r3,#0x46 ; ble        -> the cap test        46 2b -> 63 2b  (99)
+#     0x4d6ac  movs r3,#0x46 ; strh      -> the clamp value     46 23 -> 63 23  (99)
+#            (the clamp arm also pins exp = expToNext and returns without the derived-
+#             stat recompute, so at 99 the bar simply fills and stays — same as at 70.)
+#   computeExpToNext 0x48f48 = 103*L^2 + 500*((L-1)/5) + 711  (L=99 -> 1,019,714, u32)
+#   ComputeMaxHP     0x49000 = (14*L + 18*체력) * (100 + bonus%) / 100  (fits the i16 HP)
+#
+#   addStatPoints  0x4d610: unspent u16 clamps at 276 = 69 level-ups x 4. At 99 that is
+#     98 x 4 = 392 = 0xc4 << 1, so the `movs r3,#0x8a` in front of the `lsls #1` becomes
+#     `movs r3,#0xc4`:                                        0x4d628  8a 23 -> c4 23
+#   addSkillPoints 0x4d648: unspent u8 clamps at 44 = 19 (levels 2..20, `cmp #0x14; ble`)
+#     + 25 (even levels 22..70). To 99 that is 19 + 39 (22..98) = 58 = 0x3a:
+#                                                             0x4d664  2c 2c -> 3a 2c
+#                                                             0x4d668  2c 23 -> 3a 23
+#   Without those two a hoarder's points past 70 would vanish into the old clamp; the
+#   host's `items::{STAT_POINT_CAP, SKILL_POINT_CAP}` garbage ceilings move with them
+#   (a reading above the ceiling is "not a character", so they MUST agree with the guest).
+#
+# Nothing else in the image compares the player level to 70: an imm8 sweep of `.text`
+# finds `cmp #0x46` at exactly two sites — 0x4d6a8 (this) and 0x275ac (a `rand(0,100) >
+# 70` roll, unrelated). The kill-EXP formula (`exp_divisor_site` RE) clamps the level
+# difference to ±9 and pays `1 + enemy_exp` once the player is 5+ levels above the
+# monster; the strongest wild monster is Lv 67 (`enemyh_dat`), so 71+ is reachable but
+# slow from ordinary hunting — that is the ORIGINAL formula, deliberately untouched here
+# (balance is the player's call; the tower's level fork and the ±9 clamp are the two knobs).
+#
+# ★★ 114차 (2026-09-19, player decision): MAIN ONLY. The vanilla flavour keeps the
+#   original 70 — `flavor = "main"` on all five leaves those halfwords untouched there
+#   (`Applied 46 patches` on a vanilla boot against main's 51, one `not installing the
+#   main-only patch` line each). The host's `items::{LEVEL_CAP, STAT_POINT_CAP,
+#   SKILL_POINT_CAP}` stay 99/392/58 on BOTH flavours: a garbage ceiling may be LOOSER
+#   than the guest's clamp, never tighter — a Lv 71+ character made on main must still
+#   resolve when its save is opened on vanilla (it just cannot level further there).
+# `expect` pins every original halfword; confirmed against the shipped binary.mod
+# (md5 6a352944…) byte for byte before this was written.
+[[entry.patch]]
+pc = 0x4d6a8
+bytes = "63 2b"
+expect = "46 2b"
+flavor = "main"
+[[entry.patch]]
+pc = 0x4d6ac
+bytes = "63 23"
+expect = "46 23"
+flavor = "main"
+[[entry.patch]]
+pc = 0x4d628
+bytes = "c4 23"
+expect = "8a 23"
+flavor = "main"
+[[entry.patch]]
+pc = 0x4d664
+bytes = "3a 2c"
+expect = "2c 2c"
+flavor = "main"
+[[entry.patch]]
+pc = 0x4d668
+bytes = "3a 23"
+expect = "2c 23"
+flavor = "main"
+
+# ── THE ORB HOOKS ARE ROLLED BACK (2026-08-14). Do not re-add without reading this. ──
+#
+# Three hooks lived here for one day: `orb_sum_lgt` (pc 0x133e5) and two `orb_name_lgt`
+# (pc 0x6c0b / 0x6c4d). They made an item carry orbs of DIFFERENT kinds — summing their
+# bonuses and chaining their names. The player asked for the feature and then asked for it
+# back out; this comment is why it cannot be made to work, so nobody re-derives it.
+#
+# The blocker is the GAME'S DATA MODEL, not the hook addresses (all three were correct and
+# device-proven: the name hooks fired 889x in one session with the right orb lists).
+#
+#   1. No per-socket storage exists ANYWHERE. All three item representations — the 60-byte
+#      inventory instance, the 20-byte warehouse wire record, the 20-byte equipped-slot
+#      record — carry only (total sockets, filled count, ONE orb id). Even the socket-gem
+#      row drawer 0x415c4 takes just (total, filled); it never learns which orbs.
+#   2. ★ THE SAVE CARRIES ONE ORB ID. The save-load deserialiser 0x1a2fc restores
+#      +0x3b3/+0x3b6/+0x3b8/+0x3bc/+0x3c5/+0x3c6/+0x3c8/+0x3c9 and then calls 0x528f0,
+#      which RECOMPUTES +0x3cc/+0x3ce from that single id. A perfect in-memory sum is
+#      erased by the next save load, always.
+#   3. The inventory name and the detail panel's effect line both read the instance's one
+#      orb id, so a correct stat would still be displayed as a single orb. Device-confirmed:
+#      after withdrawing, both the name and the stat show only the last orb.
+#   4. Covering it would mean hooking the withdraw path, the save-load recompute, six panel
+#      recompute sites (four of which have their own guest bug — they feed the ITEM INDEX
+#      into orbTable[X*0x18+0x15], an out-of-table read), the inventory name path and the
+#      detail line. Each is a separate failure surface; two of the first two attempts
+#      shipped bugs (a hook that never executed, and a 48-vs-30 byte buffer overrun).
+#
+# Making it work needs a save-format change, which would put live player saves at risk.
+# The behaviour is therefore the ORIGINAL one: the last orb socketed is the item's orb, and
+# stacking MORE OF THE SAME KIND amplifies it via the game's own
+# `orbStat * (filled^2 + filled) / 2`.
+#
+# The Rust handlers and their tests are kept in `binary_patches/orbsum.rs` — they are
+# correct and expensive to re-derive. Re-adding these three entries plus re-enabling
+# `ProtocolHandler.ORB_LIST_ENABLED` in hero3_server turns the feature back on.
+
+# ── LOOT LIFETIME: a dropped item stays 60 s, not 6 — and the 30 slots stay 30 (162차, 2026-10-03) ──
+#
+# User: «아이템 없어지는데 시간을 늘려줘 60초정도로 늘렸으면 좋겠어». `binary_patches/lootlife.rs` has
+# the whole RE; the short form:
+#
+#   The field's dropped items are 30 records x 20 B at `grid+0x60` (grid = *(CHAR+0x9e28)),
+#   count (i8) at `grid+0x2b8`. The loot tick `0x54914` (world tick, once per 40 ms = every
+#   other 20 ms frame — probe: one removal per two frames) bumps each record's u16 counter
+#   (+0x10) and removes the first one whose counter passes the compare:
+#
+#     0x54944  lsls r3,r3,#16 ; asrs r3,r3,#16 ; cmp r3,#0x96 ; bgt     150 ticks = 6 s
+#
+#   and the painter `0x54c00` blinks a record past its own compare:
+#
+#     0x54c80  lsls r2,r3,#16 ; asrs r3,r2,#16 ; cmp r3,#0x77 ; bgt     120 ticks = the last 1.2 s
+#
+#   1500 ticks do not fit `cmp #imm8`, so each `asrs #16` becomes `asrs #19` (the compare
+#   sees counter/8, ARITHMETIC — a scene-cleared slot starts at 0xffff = -1 and must keep
+#   surviving, which an unsigned shift would not give) and the immediates become 0xbb / 0xab:
+#   removed from counter 1504 = 60.2 s, blinking from 1376 = 55.0 s (the last five seconds).
+#   Only the two halfwords after each `lsls` change; `bgt` and the blink bit are the game's.
+#   Headless A/B (scene 243, three drops): shipped = gone 304 frames after the spawn, patched
+#   = gone 3010 frames after. Both flavours — a quality-of-life change like the bag boxes.
+#
+#   The spawn `0x54758` appends with NO bounds check; at 6 s thirty items on the ground was
+#   out of reach, at 60 s it is not, and the 31st record would land on the count byte and
+#   the acquisition-notice queue behind it. The hook below sits on the spawn loop's count
+#   read (`0x54790 movs r2,#0`, displaced) and, when the array is full, evicts the OLDEST
+#   record (index 0 — spawn appends, every removal compacts in order) before the append.
+#   `expect` pins the shipped halfwords; confirmed against binary.mod md5 6a352944… byte for
+#   byte before this was written.
+[[entry.patch]]
+pc = 0x54946
+bytes = "db 14 bb 2b"
+expect = "1b 14 96 2b"
+[[entry.patch]]
+pc = 0x54c82
+bytes = "d3 14 ab 2b"
+expect = "13 14 77 2b"
+[[entry.hook]]
+kind = "loot_spawn_cap_lgt"
+pc = 0x54791        # movs r2,#0   (re-done; the oldest record evicted first when 30 are down)
+exit_pc = 0x54793   # ldrsb r2,[r5,r2]
+
+# ── 아바타 옷장: the worn costume's sheet on six paper-doll layers (167차, 2026-10-06, player decision) ──
+#
+# The figure is a paper doll, and exactly two functions load a layer: the setter `0x517bc`
+# (장착 `0x478e8` / 해제 `0x484b8`) and the world-init loader `0x4957c` (after
+# `deserialiseSave`). Each funnels its six equipment layers — 투구 · 갑옷 · 장갑 · 신발 · 무기 ·
+# 방패, the same six numbers in both — through ONE instruction after the sheet is chosen and
+# before the file-name builder `0x19dc8` runs. At either join the hook reads the set the slot
+# wears (the host's AVATAR-page try-on, else the save's own flag byte `base+0x9e98+0xb0+slot`)
+# and, when the jar carries that set's sheet (`wie_util::stats::AVATAR_SHEETS`, published at
+# boot from the jar's directory), writes sprite `49 + set` and palette 0xff over the game's
+# pick. Then the displaced instruction, then `exit_pc`. Item rows, EQUIPPED, stats and the save
+# are never written. ⛔ Ships on BOTH flavours (player decision: 바닐라에 넣음). See
+# `wie_core_arm/src/binary_patches/avatar.rs`.
+[[entry.hook]]
+kind = "avatar_layer_set_lgt"
+pc = 0x5191b        # add r5,sp,#0x38   (re-done) — after the setter picked [sp+0x1c]/[sp+0x18]
+exit_pc = 0x5191d   # movs r2,#0x14     (the name buffer's memset)
+[[entry.hook]]
+kind = "avatar_layer_load_lgt"
+pc = 0x498c1        # ldr r4,[pc,#0x2ec] (re-done: the builder's address) — after the loader picked [sp]/[sp+0x1c]
+exit_pc = 0x498c3   # bl 0x5a6f8         (bx r4 = the name builder)
+# ★ 170차: the figure painter skips the 투구 layer when EQUIPPED[1]'s item index is -1 (its two
+# record-walk branches each `ldrsh r3,[getBase()+0x3c4]` then `adds r3,#1; bne`). A helmet
+# costume is a hairstyle / hat / mask, so while the 투구 slot shows one the hook answers 0 for
+# the -1 and the layer (loaded by the joins above) is drawn without a worn 투구. Player's own
+# layer table only (`[sp+0x60]`), BOTH flavours.
+[[entry.hook]]
+kind = "avatar_helmet_paint_lgt"
+pc = 0x1bb69        # ldrsh r3,[r0,r7]  (re-done) — EQUIPPED[1].idx, record branch A
+exit_pc = 0x1bb6b   # b 0x1bb7e          (adds r3,#1; bne)
+[[entry.hook]]
+kind = "avatar_helmet_paint_lgt"
+pc = 0x1bbf1        # ldrsh r3,[r0,r2]  (re-done) — EQUIPPED[1].idx, record branch B
+exit_pc = 0x1bbf3   # b 0x1bc06          (adds r3,#1; bne)
+# ★ 171차: a costume 투구 that carries the WHOLE head (costume.txt `head = own` — its own face,
+# drawn smaller than the hero's head) needs the hero's own head gone. The painter tests each
+# cif piece's layer with `cmp r4,#6; bne` in both record-walk branches; the hook re-does that and,
+# for the player's head piece (layer 0) while such a costume is in the 투구 layer and a 투구
+# piece follows in the same record, continues at the loop's next-piece `0x1bd9c` instead.
+# Records with no 투구 piece keep the hero's head. Player's own layer table only, BOTH flavours.
+[[entry.hook]]
+kind = "avatar_head_paint_lgt"
+pc = 0x1bb57        # cmp r4,#6; bne 0x1bb6c   (re-done) — record branch A
+exit_pc = 0x1bb5b   # ldr r3,[pc,#0x254]       (r4 == 6: the 투구 test)
+[[entry.hook]]
+kind = "avatar_head_paint_lgt"
+pc = 0x1bbdf        # cmp r4,#6; bne 0x1bbf4   (re-done) — record branch B
+exit_pc = 0x1bbe3   # ldr r3,[pc,#0x1cc]       (r4 == 6: the 투구 test)
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — LGT binary.mod, Ver 01.00.04 (in-game "VER 1.0.1")
+# ⚠ WE DO NOT SHIP THIS ONE. An earlier revision of this comment claimed it was "the
+# archive we actually ship" — that was wrong and it is the exact trap the two numbering
+# schemes set (see the 01.00.07 entry above). The shipped asset is 6a352944…; this
+# archive is not present in the repo at all. Kept so a 01.00.04 dump still gets blit565.
+# ---------------------------------------------------------------------------
+# A SECOND LGT revision of the same title (PID PD119037 / AID 0002865E), 520,308 B
+# against 01.00.07's 519,952 B — a minor revision, not another full recompile: the
+# whole blitter is byte-recognisable, just relocated by +0x74 (its `.text` is 0x144
+# bytes longer). Entry prologue `push {r4-r7,lr}; sub sp,#0x54` at 0x2ddf0.
+#
+# Re-derived on this binary rather than assumed (2026-08-10), and every clause of
+# the blit565_lgt contract holds instruction for instruction:
+#   0x2ddf0  push {r4-r7,lr} / sub sp,#0x54      the two bytes the hook replaces
+#   0x2de00  cmp r0,#0  -> bl 0x2e92e            dst == 0 early-out
+#   0x2de0a  cmp r2,#0  -> bl 0x2e92e            sprite == 0 early-out, r2 = [sp,#0x74]
+#                                                = caller sp+0xc = arg index 3 = `spr`
+#   0x2de12  ldr r0,[r2,#8]                      pixel block, DIRECT pointer (LgtDirect)
+#   0x2de18  ldrsh r3,[r2,#6] ; lsls r3,#1       2 * palette_len
+#   0x2de20  ldr r4,[r2,#0xc]                    palette, direct at the RGB565 entries
+#   0x2de24  adds r0,#8 ; 0x2de56 adds r4,r3,#1  pixels = data + 2*palette_len + 9
+#   0x2de28  ldrb r3,[r6] ; cmp r3,#0xb          fmt 0x0b = 4bpp, else -> 0x2e5d4
+#   0x2de2e  ldrh [r2] ; bmi -> (pitch+1)>>1     4bpp row bytes = ceil(pitch/2)
+#   0x2ddfe  ldr r5,[sp,#0x88] = caller sp+0x20  transform, i.e. the same 13 args
+# Confirmed at runtime the same way the 01.00.07 entry was: probe A/B with
+# `--hle 0` vs `--hle 1`, identical frame pixel hashes.
+[[entry]]
+name = "Hero3 binary.mod (LGT 01.00.04)"
+hash = "e76fafdd3e9e0057be8446cf7ab35577"
+
+[[entry.hook]]
+kind = "blit565_lgt"
+pc = 0x2ddf1
+
+# ── The critical-hit switch was BUILT, SHIPPED AND THEN REMOVED (2026-08-08) ──
+#
+# Nothing here is broken; the player simply did not want the feature ("그냥 1번 기능은 전부
+# 제거해줘"). The reverse engineering is worth keeping because it is the expensive part and it
+# is all device-proven — see PLAY_FEEDBACK_FIXES.md 29차/30차 for the full argument:
+#
+#   0x144534  the critical ROLL. rand(0,100) against a stat-derived chance clamped to 2..=60 %;
+#             its byte lands at `attacker + 0x203`.
+#   0x1445b8  the DAMAGE consumer of that byte: two instruction-identical blocks differing by
+#             one immediate, `+0x64` (100) at 0x1446c6 vs `+0x96` (150) at 0x144774 => x1.5.
+#   0x143cdc  the PRESENTATION block (per attack routine; twin at 0x143752). Entered by
+#             `bne` at 0x143c36 / 0x14370a, whose fall-through is 0x143c38 / 0x14370c.
+#             Plays `sd004_mf`, then calls the vibration wrapper.
+#   0x147a74  that wrapper, gated on the game's own 진동 option (`*(sl+0x16c)` byte 3). Its
+#             ONLY callers are 0x14376c and 0x143cf6, i.e. the two blocks above.
+#
+# Re-implementing means a hook at one of those and a settings row; the addresses above were
+# each verified against the shipped client.bin (md5 3792a476…) byte for byte.

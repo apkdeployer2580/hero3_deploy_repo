@@ -1,0 +1,90 @@
+0581a8  push     {r4, r7, lr} 
+0581aa  mov      r7, sp 
+0581ac  sub      sp, #0x18 
+0581ae  subs     r3, r7, #4 
+0581b0  str      r0, [r3] 
+0581b2  adds     r3, r7, #0 
+0581b4  subs     r3, #8 
+0581b6  str      r1, [r3] 
+0581b8  adds     r4, r7, #0 
+0581ba  subs     r4, #0x14 
+0581bc  bl       #0x14ad10 
+0581c0  adds     r3, r0, #0 
+0581c2  ldr      r1, [pc, #0x114]   ; lit@0x582d8 = 0x0000a3ac
+0581c4  adds     r3, r3, r1 
+0581c6  str      r3, [r4] 
+0581c8  adds     r2, r7, #0 
+0581ca  subs     r2, #0xc 
+0581cc  adds     r3, r7, #0 
+0581ce  subs     r3, #8 
+0581d0  ldr      r3, [r3] 
+0581d2  ldr      r3, [r3] 
+0581d4  adds     r3, #8 
+0581d6  str      r3, [r2] 
+0581d8  adds     r2, r7, #0 
+0581da  subs     r2, #0xd 
+0581dc  adds     r3, r7, #0 
+0581de  subs     r3, #0xc 
+0581e0  ldr      r3, [r3] 
+0581e2  adds     r3, #0xa 
+0581e4  ldrb     r3, [r3] 
+0581e6  strb     r3, [r2] 
+0581e8  adds     r2, r7, #0 
+0581ea  subs     r2, #0xc 
+0581ec  adds     r3, r7, #0 
+0581ee  subs     r3, #8 
+0581f0  ldr      r3, [r3] 
+0581f2  ldr      r3, [r3] 
+0581f4  adds     r3, #8 
+0581f6  str      r3, [r2] 
+0581f8  adds     r3, r7, #0 
+0581fa  subs     r3, #0x14 
+0581fc  ldr      r3, [r3] 
+0581fe  adds     r1, r3, #0 
+058200  adds     r1, #0xa0 
+058202  adds     r3, r7, #0 
+058204  subs     r3, #0xc 
+058206  ldr      r3, [r3] 
+058208  adds     r2, r3, #0 
+05820a  adds     r2, #0xb 
+05820c  adds     r3, r7, #0 
+05820e  subs     r3, #0xd 
+058210  ldrb     r3, [r3] 
+058212  adds     r0, r1, #0 
+058214  adds     r1, r2, #0 
+058216  adds     r2, r3, #0 
+058218  bl       #0x19f624 
+05821c  adds     r3, r7, #0 
+05821e  subs     r3, #0xd 
+058220  ldrb     r3, [r3] 
+058222  lsls     r3, r3, #0x18 
+058224  lsrs     r2, r3, #0x18 
+058226  adds     r3, r7, #0 
+058228  subs     r3, #0x14 
+05822a  ldr      r3, [r3] 
+05822c  adds     r3, r2, r3 
+05822e  adds     r2, r3, #0 
+058230  adds     r2, #0xa0 
+058232  movs     r3, #0 
+058234  strb     r3, [r2] 
+058236  subs     r3, r7, #4 
+058238  ldr      r3, [r3] 
+05823a  movs     r2, #0x18 
+05823c  rsbs     r2, r2, #0 
+05823e  adds     r2, r2, r7 
+058240  str      r3, [r2] 
+058242  movs     r3, #0x18 
+058244  rsbs     r3, r3, #0 
+058246  adds     r3, r3, r7 
+058248  ldr      r3, [r3] 
+05824a  cmp      r3, #1 
+05824c  beq      #0x158294 
+05824e  movs     r1, #0x18 
+058250  rsbs     r1, r1, #0 
+058252  adds     r1, r1, r7 
+058254  ldr      r1, [r1] 
+058256  cmp      r1, #1 
+058258  bgt      #0x158268 
+05825a  movs     r2, #0x18 
+05825c  rsbs     r2, r2, #0 
+05825e  adds     r2, r2, r7 

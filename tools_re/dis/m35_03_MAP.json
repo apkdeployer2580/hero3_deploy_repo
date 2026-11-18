@@ -1,0 +1,146 @@
+{
+ "region": "cat=5 warehouse/economy RESPONSE handler @ guest 0x157394 (fo 0x57394); jump table @ fo 0xa978c (sl-0x94b4); target = jt[op-3] + jt_base(guest 0x1a978c)",
+ "summary": "## cat=5 warehouse/economy reply model (Hero3 client.bin)\n\n**Dispatch (fo 0x57394):** prologue computes `CTX = fn_0x14ad10() + 0xa3ac` (warehouse context; stored [r7-0xc]) and `M = *node+8` (message struct; [r7-0x10]). Index = `op-3`, bound `<=0x3f`, jump via table @ fo 0xa978c. **Body is read by FIXED byte offsets from M**, NOT via a cursor reader: `M+0xa = payload[2] = body[0]`, `M+0xb = body[1]`, ... Copies use `memcpy = fn_0x19f624(dst,src,len)`; clears use `memset = fn_0x19fb78(dst,val,len)`. The `M[2]` read-cursor is zeroed on dispatch entry but **cat5 ignores it** — every field is a hard-coded offset. All multi-byte values are **LITTLE-ENDIAN** (raw memcpy then native ldrh/ldr; TX `put_u32@0x7e1c4` also writes LE with no byteswap). Common epilogue/return = fo 0x58172. Ops 0x07–0x13,0x15–0x3c all map to the default = 0x58172 (no-op return → server need not reply).\n\n**CTX warehouse layout (offsets from CTX):**\n- `+0x2f8` u32 gold balance (0xbe<<2)\n- `+0x304` u32, `+0x308` u32 economy counters (0xc1<<2 / 0xc2<<2)\n- `+0x1a4`,`+0x1a5` u8 header bytes; `+0x1a6` u16 warehouse item count (0xd3<<1)\n- `+0x1a8` 16-byte per-slot flag array (0xd4<<1, memset 0x10)\n- `+0x1b8` warehouse item list = 16 × 20-byte rows = 0x140 bytes (0xdc<<1)\n- `+0x30c` u16 cash-item count (0xc3<<2); `+0x30e` 16-byte cash flag array\n- `+0x320` cash/money item list = 16 × 20-byte rows = 0x140 bytes (0xc8<<2)\n\n**Two reply shapes:** (A) LIST replies (op 0x03/0x3d warehouse, op 0x3f cash) = header + u16 count N + N rows of **21 bytes** (1 flag byte → flag array, 20-byte item → list array; N capped at 16). (B) scalar/ack replies (op 0x14 gold u32; op 0x3e dual-currency; op 0x04 single 23-byte item; op 0x05/0x06/0x40/0x41/0x42 = 1 status byte, nonzero→success which triggers a follow-up TX + list refresh, zero→error UI).\n\n**20-byte item record (row[1..20] of list replies, and op 0x04 body):** `+8`=u8 item category, `+9`=u8 item id (HIGH — consumer `insert@0x176b44` reads [8],[9] then item-lookup `0x14f358`); `+0..7`=two u32 instance words, `+0xa`=u8, `+0xb`=u8, `+0xc..0xf`=i32 (-1 sentinel), `+0x10..0x13`=4×u8 option/enhance bytes (MED, from upload TX struct symmetry @ op 0x41 build 0x57726-0x578f8).",
+ "reply_formats": [
+  {
+   "cat_op": "cat=0x05 op=0x14 (gold balance)",
+   "layout": "body @ payload[2]: p[2..5] = u32 LE gold. Total body = 4 bytes. (fo 0x57636: memcpy(CTX+0x2f8, M+0xa, 4))",
+   "effect": "Writes gold into CTX+0x2f8; then AUTO-SENDS a cat5 op 0x3f request (12-byte body, carrying CTX[0x308]) to fetch cash-item list. Server should follow a 0x14 reply by being ready for an inbound 0x3f.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x3d (slot-commit → warehouse LIST refresh)",
+   "layout": "p[2]=u8 →CTX[0x1a5]; p[3]=u8 →CTX[0x1a4]; p[4..5]=u16 LE count N →CTX[0x1a6]; then N rows @ p[6 + i*21]: row[0]=u8 →CTX[0x1a8+i] (slot flag), row[1..20]=20-byte item →CTX[0x1b8 + i*20]. N must be ≤16. Body len = 4 + 21*N. (fo 0x57400 header; loop 0x57528: memcpy 1B @ M+0xe+i*21, 20B @ M+0xf+i*21). Clamp: CTX[0x1a5]=min(CTX[0x1a4],CTX[0x1a5]).",
+   "effect": "Rebuilds the full warehouse grid (clears CTX+0x1b8 then fills N items). p[2]/p[3] are max-slots/used-count (MED). Tail refreshes UI when CTX[0x38]==3.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x03 (warehouse LIST / open-download)",
+   "layout": "p[2]=u8 →CTX[0x1a4]; p[3..4]=u16 LE count N →CTX[0x1a6]; then N rows @ p[5 + i*21]: row[0]=u8 →CTX[0x1a8+i], row[1..20]=20-byte item →CTX[0x1b8 + i*20]. N ≤16. Body len = 3 + 21*N. (fo 0x57c0c; loop 0x57d08: 1B @ M+0xd+i*21, 20B @ M+0xe+i*21).",
+   "effect": "Same warehouse item array as op 0x3d but 3-byte header (no CTX[0x1a5] byte). Used for initial warehouse open. Tail: UI via fn_0x175b98(global[sl+0x4b0],7,1,1).",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x3f (cash-item info / LIST)",
+   "layout": "p[2..5]=u32 LE →CTX[0x308]; p[6..9]=u32 LE →CTX[0x304]; p[10..11]=u16 LE count N →CTX[0x30c]; then N rows @ p[12 + i*21]: row[0]=u8 →CTX[0x30e+i], row[1..20]=20-byte item →CTX[0x320 + i*20]. N ≤16. Body len = 10 + 21*N. (fo 0x57a00; loop 0x57b2c: 1B @ M+0x14+i*21, 20B @ M+0x15+i*21). Clamp CTX[0x308]=min(CTX[0x308],N).",
+   "effect": "Fills the cash/money-shop item array at CTX+0x320. Two u32 headers = cash counters (MED). Tail sets CTX[0x38]=3, CTX[0x40]=0 and refreshes UI.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x04 (item download — single item)",
+   "layout": "p[2..3]=u16 LE →local (slot/count, MED); p[4]=u8 →local (flag, MED); p[5..24]=20-byte item record. Total body = 23 bytes. (fo 0x57dbc: memcpy 2B @ M+0xa, 1B @ M+0xc, 20B @ M+0xd).",
+   "effect": "Inserts the 20-byte item into inventory via fn_0x176b44 (reads item[8]=category, item[9]=id). Then AUTO-SENDS cat5 op 0x3d to refresh warehouse list. Item [8]/[9] = HIGH; header u16/u8 semantics MED.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x05 (discard/throw-away ack)",
+   "layout": "p[2]=u8 status. Body = 1 byte. (fo 0x57e98: ldrb M+0xa; cmp #0).",
+   "effect": "status!=0 → success: AUTO-SENDS cat5 op 0x3d (list refresh) + shows dialog global[sl+0x4b8]. status==0 → failure UI path fn_0x175b98(M+0xc,7,1,1).",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x41 (item upload ack)",
+   "layout": "p[2]=u8 status. Body = 1 byte. (fo 0x576d2: ldrb M+0xa; cmp #0; bne success).",
+   "effect": "status!=0 → success: client removes the uploaded item from its own inventory (reads local state via fn_0x14ad10 globals 0x9c70/0x9c71/0x9e28), then AUTO-SENDS cat5 op 0x03 with the 20-byte item + CTX[0x1a5] count byte. status==0 → UI path fn_0x175b98(M+0xc,7,1,1). No item data is read from THIS reply's wire.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x3e (money-down — dual currency)",
+   "layout": "p[2..5]=u32 LE →CTX+0x2f8 (gold, clamped ≥0); p[6..9]=u32 LE →base+0xcc (2nd currency, clamped ≥0). Body = 8 bytes. (fo 0x57ef4: memcpy 4B @ M+0xa to CTX+0x2f8, 4B @ M+0xe to fn_0x14ad10()+0xcc).",
+   "effect": "Sets gold and a second player-state currency (base+0xcc; likely cash/event points, MED). Both floored to 0 if negative. UI refresh fn_0x15727c + dialog global[sl+0x4bc].",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x42 (cash-buy ack)",
+   "layout": "p[2]=u8 status. Body = 1 byte. (fo 0x57f84: ldrb M+0xa; cmp #0; beq fail).",
+   "effect": "status!=0 → success: client builds a cat5 op 0x40 request from the previously-received cash item at CTX+0x320+slot*20 (put 8 bytes via 0x17e300 + a word via 0x17e1c4 + status byte) and sends it. status==0 → UI fn_0x175b98(M+0xc,7,1,1).",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x40 (gold-down / purchase commit ack)",
+   "layout": "p[2]=u8 status. Body = 1 byte. (fo 0x58036: ldrb M+0xa; cmp #0; bne success else fail).",
+   "effect": "status!=0 → success: copies the 20-byte cash item from CTX+0x320+slot*20 into a local and inserts into inventory via fn_0x176b44, then formats a result popup (fn_0x1a42a4) + list refresh. status==0 → UI path. No item data read from THIS reply's wire (item comes from prior op 0x3f list).",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x05 op=0x06 (orb-combine ack)",
+   "layout": "p[4..] (M+0xc) passed as a display argument to formatter fn_0x1a42a4; p[2..3] not consumed here. Trailing bytes = result message/struct (EUC-KR text likely). (fo 0x579a0).",
+   "effect": "Shows combine-result popup from p[4] onward, then AUTO-SENDS cat5 op 0x3d to refresh the warehouse list. Exact trailing format LOW; that op 0x3d list refresh is what actually repopulates items.",
+   "confidence": "MED"
+  }
+ ],
+ "claims": [
+  {
+   "statement": "cat5 dispatch: CTX(warehouse ctx)=fn_0x14ad10()+0xa3ac, M(message)=*node+8, body reads start at M+0xa (=payload[2]=body[0]); index=op-3, bound<=0x3f, jump table at fo 0xa978c with target=jt[op-3]+guest_0x1a978c.",
+   "evidence": "fo 0x573b2 bl 0x14ad10 then +0xa3ac→[r7-0xc]; 0x573c6 *node+8→[r7-0x10]; 0x573d2 op-3; 0x573e0 cmp #0x3f; 0x573f0 ldr[pc]=0xffff6b4c add sl → jt base guest 0x1a978c; mov pc,r3.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Body is parsed by FIXED offsets, not a cursor reader. memcpy=fn_0x19f624(dst,src,len), memset=fn_0x19fb78(dst,val,len). The M[2] cursor is zeroed but unused by cat5.",
+   "evidence": "Every handler uses `adds r3,#imm` on M ([r7-0x10]) then bl 0x19f624; e.g. fo 0x5745e memcpy(CTX+0x1a5, M+0xa, 1); no read of M[2] anywhere in 0x57400-0x58172.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "All multi-byte reply fields are little-endian.",
+   "evidence": "Reads are raw memcpy then native ldrh/ldr (e.g. fo 0x574fe ldrh count, 0x57644 gold u32); TX put_u32 @ fo 0x7e1c4 stores value to stack then memcpy 4B into TX buf with NO byteswap (0x7e1d6 str r0,[sp]; 0x7e1ea memcpy 4).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Warehouse LIST replies (op 0x03/0x3d) fill CTX+0x1b8 (16×20B item array, memset 0x140) and CTX+0x1a8 (16B flag array); count in CTX+0x1a6 (u16). Rows are 21 bytes: 1 flag byte + 20-byte item.",
+   "evidence": "fo 0x57420 memset(CTX+0x1b8,0,0x140); loop fo 0x57540 dst=CTX+0x1a8+i memcpy 1; 0x57586 dst=CTX+0x1b8+i*20 memcpy 0x14; src stride i*21 (0x5755a muls #0x14 + i).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Cash/money LIST reply (op 0x3f) fills CTX+0x320 (16×20B array) + CTX+0x30e flags; count u16 at CTX+0x30c; preceded by two u32 headers (CTX+0x308, CTX+0x304). Rows start at body offset 10, 21 bytes each.",
+   "evidence": "fo 0x57a14 memset(CTX+0x320,0,0x140); 0x57a4e memcpy(CTX+0x308,M+0xa,4); 0x57a6c memcpy(CTX+0x304,M+0xe,4); 0x57a8a memcpy(CTX+0x30c,M+0x12,2); loop 0x57b60 20B @ M+0x15+i*21.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Gold balance is CTX+0x2f8 (u32 LE). op 0x14 sets it from body[0..3]; op 0x3e sets it from body[0..3] and a 2nd currency at fn_0x14ad10()+0xcc from body[4..7], both clamped >=0.",
+   "evidence": "fo 0x57650 memcpy(CTX+0x2f8,M+0xa,4); fo 0x57efe memcpy(CTX+0x2f8,M+0xa,4)+0x57f1a memcpy(0x14ad10()+0xcc,M+0xe,4)+0x57f3c/0x57f5a sign checks bge→store 0.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 20-byte item record has u8 category at +8 and u8 item-id at +9 (HIGH); remaining bytes (+0..7 two u32 words, +0xa,+0xb, +0xc..0xf i32, +0x10..0x13) are instance/option data (MED).",
+   "evidence": "insert consumer fn_0x176b44 reads ldrb[item+8]/[item+9] (fo 0x76c2a/0x76c34) → item lookup fn_0x14f358; upload TX struct build (op 0x41, fo 0x57726-0x578f8) writes [8],[9] from inv+0x3b4/+0x3b8 and other bytes from inv fields, [0xc..0xf]=-1.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x04 delivers ONE 20-byte item (body = u16 + u8 + 20 bytes = 23) inserted via fn_0x176b44, then auto-requests op 0x3d list refresh.",
+   "evidence": "fo 0x57dda memcpy 2B@M+0xa; 0x57df0 1B@M+0xc; 0x57e0e 20B@M+0xd→local; 0x57e2a bl 0x176b44; 0x57e64 put_u8(0x3d) send.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x05/0x40/0x41/0x42 replies carry exactly ONE status byte at payload[2]; nonzero=success (each triggers a client-local follow-up TX + list refresh), zero=error UI (fn_0x175b98(M+0xc,7,1,1)).",
+   "evidence": "fo 0x57e9e/0x5803a/0x576d8/0x57f8a all `ldrb [M+0xa]; cmp #0; b(ne/eq)`; success branches build follow-up requests from local CTX/state (no further wire read).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Unknown ops (0x07-0x13, 0x15-0x3c) route to default fo 0x58172 which is only the function epilogue → no-op; server does not need to reply to them.",
+   "evidence": "jump table entries for those ops all = guest 0x158172; fo 0x58172 = `mov sp,r7; pop{r3}; mov sl,r3; pop{r4,r5,r7,pc}`.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x06 (orb combine) passes payload[4] onward to display formatter fn_0x1a42a4 then auto-requests op 0x3d; exact trailing body format not fully resolved.",
+   "evidence": "fo 0x579c8 r2=M+0xc; 0x579d2 bl 0x1a42a4; 0x579dc put_u8(0x3d) send. body[0..1] not consumed in handler.",
+   "confidence": "MED"
+  }
+ ],
+ "open_questions": [
+  "20-byte item sub-fields +0..7 (two u32 words) and +0x10..0x13 exact semantics (quantity/enhancement/option ids) — grounded only via upload-TX symmetry; would need the warehouse grid render code that reads CTX+0x1b8+i*20 to name each byte.",
+  "op 0x3d header bytes payload[2]/payload[3] (→CTX[0x1a5]/CTX[0x1a4]) precise meaning (max-slots vs used-count vs page) — clamp min() suggests capacity vs used.",
+  "op 0x3f two u32 headers (CTX+0x308, CTX+0x304) exact meaning (total cash items / page / currency) — CTX+0x308 also feeds the op 0x14→0x3f follow-up request.",
+  "op 0x04 leading u16 (payload[2..3]) + u8 (payload[4]) meaning — copied to locals not obviously consumed in the traced range (possible source-slot + result code).",
+  "op 0x06 orb-combine trailing payload format at p[4] (fed to fn_0x1a42a4) — likely an EUC-KR result string but not byte-mapped."
+ ],
+ "artifacts": [
+  "C:/Users/<user>/AppData/Local/Temp/cat5_main.txt (dispatch 0x57394)",
+  "C:/Users/<user>/AppData/Local/Temp/cat5_A.txt + cat5_3d_loop.txt (op 0x3d)",
+  "C:/Users/<user>/AppData/Local/Temp/op14.txt (op 0x14 gold)",
+  "C:/Users/<user>/AppData/Local/Temp/op41.txt (op 0x41 upload ack)",
+  "C:/Users/<user>/AppData/Local/Temp/op06.txt (op 0x06 orb combine)",
+  "C:/Users/<user>/AppData/Local/Temp/cat5_B.txt (ops 0x3f,0x03,0x04,0x05,0x3e,0x42,0x40,epilogue)",
+  "C:/Users/<user>/AppData/Local/Temp/insert.txt (fn_0x176b44 item consumer)",
+  "C:/Users/<user>/AppData/Local/Temp/put_u32.txt (fn_0x7e1c4 TX LE proof)"
+ ]
+}

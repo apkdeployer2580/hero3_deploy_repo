@@ -1,0 +1,24 @@
+# 의상 14 — 하드코어 엔딩 보상 · 케이 전용. 175차: 사용자 참고 그림 1 (뻗친 주황 머리 · 가슴을 연 검은 사신복 · 붉은 깃과 띠 · 해진 롱코트 · 일본도).
+# 투구 시트가 얼굴까지 머리 전체를 그린다(171차 head = own) — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그린다.
+head = own
+# tools_re/costume_atelier/sets/reaper.py 가 프레임마다 그린다(재채색 없음).
+set            = 흑의 사신
+acquire        = clear.hard
+hero           = kei
+helmet         = 흑의 사신 머리
+helmet.desc    = 하늘로 뻗친 주황 머리
+armor          = 흑의 사신 상의
+armor.desc     = 붉은 깃을 단 검은 사신복
+gloves         = 흑의 사신 소매
+gloves.desc    = 붕대를 감은 검은 소매
+shoes          = 흑의 사신 하의
+shoes.desc     = 해진 자락과 줄무늬 바지
+weapon         = 흑의 사신 무기
+weapon.desc    = 칠흑의 영혼을 벼린 무기
+weapon.spear   = 흑의 사신 언월도
+weapon.sword   = 흑의 사신 참도
+weapon.knife   = 흑의 사신 낫
+weapon.dark    = 사신의 흑월진
+weapon.holy    = 사신의 백월진
+shield         = 흑의 사신 방패
+shield.desc    = 해골 문장을 새긴 검은 방패

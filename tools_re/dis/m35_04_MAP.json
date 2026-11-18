@@ -1,0 +1,93 @@
+{
+ "region": "cat=4 recovery RESPONSE handler @ fo 0x56f3c (guest 0x156f3c); reader 0x197874; local serializer 0x1960bc; writer 0x1951b0",
+ "summary": "## cat=4 recovery response model (server -> client)\n\nThe cat=4 handler (fo 0x56f3c) dispatches **only two ops** — 0x3d and 0x3e (fo 0x56f8a `cmp #0x3d; beq`, fo 0x56f96 `cmp #0x3e`; all else -> return at fo 0x57252). Both read their body from `M = *node+8`, where `M[0xa]=payload[2]=body[0]`, `M[0xb]=payload[3]=body[1]`, etc.\n\n### CRITICAL / honest finding\n**cat=4 does NOT carry a 219-byte bulk save blob back from the server.** Neither op copies 219 bytes off the wire. The \"219\" (0xdb) is grounded at **fo 0x961ce** (`adds r3,#0xdb`) inside the **local** serializer 0x1960bc — it is the size of the primary block the client writes to disk from its OWN in-memory state. The recovery is a **compact-seed** model, not a raw-save transfer:\n\n- **op 0x3e = RESTORE seed** (server -> client): resets the game-save object (fo 0x570c0 `bl 0x195e40`) then reads **20 structured bytes** (fo 0x57112 `bl 0x197874`, cursor pre-set to 1) into SAVEOBJ = `G+0xb4` (G = `*(sl+0x444)` via 0x14ad10). Then it re-serializes (0x1960bc, 219B) and writes both slot files. The server stores a **20-byte** character record; the client re-expands it to the full 219-byte local save.\n- **op 0x3d = save COMMIT / result** (server -> client): commits the current in-memory state to a slot (serialize 219B -> `./Hero3GameSave_<idx>`; 16B record -> `./Hero3SlotSave_<idx>`), acks with **`05 3d 00`** (client->server, fo 0x56f9e-0x56fb0), and pops a dialog. Body = {slot:u8, status:u8, reserved:u8, text:cstr}.\n\nA pair (op 0x3e seed, then op 0x3d commit) = one full \"복구\" restore round.\n\n### Body layouts (offset from payload[0]=cat)\n**op 0x3d** `04 3d | slot status resv text...`\n- payload[2] body[0] u8 = **slot**, clamped `<=8` (fo 0x56fd6/0x56fe4) -> stored `strh` to `G+0xb4` and to slot-roster `struct(G+0xa3ac)+2*idx+0x56` (fo 0x57010/0x57012). NOTE: this is *not* the filename index.\n- payload[3] body[1] u8 = **status/ack** (fo 0x57030 `ldrb [M,#0xb]; cmp #0; bne`): 0 = success, nonzero = pending/error.\n- payload[4] body[2] u8 = **reserved** (handler never reads M[0xc]).\n- payload[5..] body[3..] = **NUL-terminated EUC-KR string**, sprintf'd into dialog buf `obj+0x10` on success (fo 0x57066 `r3=M+0xd`, fo 0x57076 `bl 0x1a42a4` = indirect call r4 = vtbl sprintf, fmt `\"%s\"` at sl+0x484).\n- status!=0 path shows fixed dialog `\"아이템 정보 요청중입니다.\"` (sl+0x4a0, fo 0x57086) via 0x175b98.\n\n**op 0x3e** `04 3e | b0 b1 b2 seed[18]`\n- reader 0x197874(arg0=&cursor init **1**, arg1=`M+0xa`) so body[0]/payload[2] is **skipped/unread**.\n- payload[3] body[1] u8 -> `SAVEOBJ[2]` (fo 0x978c6 `strb [r4,#2]`).\n- payload[4] body[2] u8 -> `SAVEOBJ[0x2e]` (fo 0x978e4 `strh [r4,#0x2e]`).\n- payload[5..22] body[3..20] = **18 u8 seed**, written 1 byte each into an array of 8-byte records at `SAVEOBJ+0xf4 + (i*9+j)*8`, i=0..1, j=0..8 (fo 0x97946). 2 groups x 9 entries, stride 8.\n\n### Write path (both ops)\n- serializer **0x1960bc**(&outLen): serializes SAVEOBJ, primary block 0xdb=219B (fo 0x961ce), returns buf ptr + fills length.\n- writer **0x1951b0**(prefix, data, len): builds filename `\"%s_%d\"` (sl+0xce8) with index = **`*(G+0xa3f8)`** (fo 0x951e4/0x95200) — the client's *current-slot* global, NOT payload[2]; prepends a fixed 16-byte header (sl+0xcec, fo 0x952f8) then writes `len` bytes.\n- GameSave (op 0x3d via helper 0x15727c): fo 0x56fcc -> 0x57346 `bl 0x1960bc` -> 0x57352 prefix `\"./Hero3GameSave\"` (sl+0x4a4) -> 0x5736a `bl 0x1951b0`.\n- SlotSave (16B): fo 0x57014 `bl 0x196b90` (returns G-save-record ptr) -> r2=0x10 -> 0x57026 `bl 0x1951b0` prefix `\"./Hero3SlotSave\"` (sl+0x49c).",
+ "reply_formats": [
+  {
+   "cat_op": "cat=4 / op=0x3d  (server->client: save-commit / item result)",
+   "layout": "payload[0]=cat=0x04 (u8); payload[1]=op=0x3d (u8); payload[2]=body[0]=slot (u8, client clamps to <=8); payload[3]=body[1]=status (u8: 0=success, !=0=pending/error); payload[4]=body[2]=reserved (u8, unread); payload[5..]=body[3..]=EUC-KR text, NUL-terminated (variable). All single-byte fields; no multibyte ints in this reply.",
+   "effect": "Client serializes its CURRENT in-memory state to 219B (fo 0x961ce) and writes ./Hero3GameSave_<curSlot> + a 16B record to ./Hero3SlotSave_<curSlot> (index = *(G+0xa3f8), not payload[2]); sends ack 05 3d 00 to server. slot(payload[2]) stored to G+0xb4 & slot-roster struct. status==0: sprintf payload[5.. ] into dialog obj+0x10 and show it (obj[0xc]=1). status!=0: clear obj[0xc]=0, show fixed '아이템 정보 요청중입니다.' menu (0x175b98).",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=4 / op=0x3e  (server->client: restore/new-char SEED + transition)",
+   "layout": "payload[0]=cat=0x04 (u8); payload[1]=op=0x3e (u8); payload[2]=body[0]=UNREAD (reader cursor initialized to 1, skips it); payload[3]=body[1]=u8 -> SAVEOBJ[2]; payload[4]=body[2]=u8 -> SAVEOBJ[0x2e]; payload[5..22]=body[3..20]=18*u8 seed array -> SAVEOBJ+0xf4+(i*9+j)*8 (i=0..1, j=0..8, stride 8). Total body read = 20 bytes, all u8.",
+   "effect": "Client resets the game-save object G+0xb4 (0x195e40): zeroes arrays, sets G+0xaca8=0. Applies the 20 seed bytes into SAVEOBJ, sets G+0xf8=1000(0x3e8), G+0x1c/0x20=timer (HAL getTime), copies G+0xd4->G+0xd9, SAVEOBJ+0xf2=*(G+0xec). Then re-serializes (0x1960bc,219B) and writes ./Hero3SlotSave + ./Hero3GameSave slot files. This reconstructs a character from a compact server-side record.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=5 / op=0x3d  (client->server ACK, emitted while handling cat=4/op=0x3d)",
+   "layout": "wire bytes after length header = 05 3d 00  (cat=0x05, op=0x3d, body=[0x00] one u8). Built by put_u8(5)@fo0x56f9e, put_u8(0x3d)@0x56fa4, put_u8(0)@0x56faa, flush 0x17e890@0x56fb0.",
+   "effect": "Acknowledgement the client sends back after receiving cat4/op0x3d, before the local slot-save. Server should expect this immediately following its 04 3d reply.",
+   "confidence": "HIGH"
+  }
+ ],
+ "claims": [
+  {
+   "statement": "cat=4 handler (fo 0x56f3c) handles exactly two ops: 0x3d and 0x3e; all other ops fall through to the epilogue at fo 0x57252.",
+   "evidence": "fo 0x56f8a 'cmp r3,#0x3d; beq 0x156f9e'; fo 0x56f96 'cmp r2,#0x3e; bne 0x156f9c'; fo 0x56f9a 'b 0x15709a' (op 0x3e), fo 0x56f9c 'b 0x157252' (default return).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x3d body: body[0]=slot(u8, clamped <=8), body[1]=status(u8), body[2]=reserved(unread), body[3..]=NUL-terminated EUC-KR text.",
+   "evidence": "clamp fo 0x56fd6 'ldrb r3,[r3,#0xa]; cmp #8; bls; strb #8,[r2,#0xa]'; status fo 0x57030 'ldrb r3,[r3,#0xb]; cmp #0; bne 0x15707c'; text fo 0x57066 'r3=M+0xd' -> fo 0x57076 'bl 0x1a42a4' with r1=fmt '%s'(sl+0x484), dest obj+0x10; M[0xc]/body[2] never read.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 219-byte (0xdb) save body is produced LOCALLY by serializer 0x1960bc and is NOT read from the server in cat=4.",
+   "evidence": "fo 0x961ce 'adds r3,#0xdb' advances the serializer's running length local by 219; the only bulk body reader reachable from cat4 (0x197874) copies just 20 bytes (op 0x3e). No 219-length memcpy from M anywhere in 0x56f3c.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op 0x3e reads 20 structured bytes from the body into SAVEOBJ (G+0xb4) via reader 0x197874, with the cursor pre-initialized to 1 so payload[2]/body[0] is skipped.",
+   "evidence": "caller fo 0x570a8 sets cursor local=1; fo 0x57112 'bl 0x197874' (arg0=&cursor, arg1=M+0xa). Inside 0x197874: fo 0x978c6 'strb [SAVEOBJ+2]', fo 0x978e4 'strh [SAVEOBJ+0x2e]', loop i<=1/j<=8 fo 0x97946 'strb [SAVEOBJ+0xf4+(i*9+j)*8]'; each read does byte=body[cursor]; cursor++.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The file slot index written is *(G+0xa3f8) (the client current-slot global), distinct from the server's slot byte payload[2] which is stored only into SAVEOBJ (G+0xb4) and the slot-roster struct.",
+   "evidence": "writer 0x1951b0 filename '%s_%d'(sl+0xce8) uses index *(G+0xa3f8): fo 0x951e4 'ldr r2,=0xa3f8; adds r4,r3,r2', fo 0x95200 'ldr r4,[r4]'. In op0x3d, payload[2] -> strh G+0xb4 (fo 0x57010) and struct(G+0xa3ac)+2*idx+0x56 (fo 0x57012); never to G+0xa3f8.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Handling cat4/op0x3d makes the client emit a 3-byte ack '05 3d 00' (cat=5,op=0x3d,body=00) to the server before the local save.",
+   "evidence": "fo 0x56f9e put_u8(5)/0x56fa4 put_u8(0x3d)/0x56faa put_u8(0) via 0x17e150, flush fo 0x56fb0 'bl 0x17e890'; matches packet_catalog flush @0x056fb0 '05 3d 00'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "op0x3d status!=0 path shows the fixed dialog string '아이템 정보 요청중입니다.' (Requesting item information); status==0 shows the server-supplied text.",
+   "evidence": "fo 0x57086 loads sl+0x4a0 (fo 0xb30e0 -> str@0x0a9660 bytes bec6c0cc... = '아이템 정보 요청중입니다.') and calls 0x175b98; success path fo 0x57042-0x57076 sets obj[0xc]=1 and sprintf's payload[5..] into obj+0x10.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x1a42a0/0x1a42a4/0x1a42a8 are indirect-call thunks (bx r3/r4/r5), i.e. the WIPI HAL/vtable call mechanism, not libgcc arithmetic helpers.",
+   "evidence": "fo 0xa42a0 'bx r3', 0xa42a4 'bx r4', 0xa42a8 'bx r5', each followed by 'mov r8,r8' pad. op0x3d text copy loads r4=vtbl fn (fo 0x5706e 'ldr r4,[r0,#4]') then 'bl 0x1a42a4'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "SAVEOBJ = G+0xb4 and G = *(sl+0x444) (returned by 0x14ad10); the writer prepends a fixed 16-byte header (sl+0xcec) before the serialized payload.",
+   "evidence": "0x14ad10 fo 0x4ad20 'r3=sl+0x444; ldr r0,[r3]'; SAVEOBJ built as base+0xb4 in 0x196b90/0x195e40/0x197874/0x1960bc; header write fo 0x952f8 'bl 0x19f624' with r1=*(sl+0xcec), r2=0x10, then payload write fo 0x95318 with r2=len.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 18-byte op-0x3e seed lands in an array of 8-byte records (SAVEOBJ+0xf4, stride 8, 2 groups of 9) — structurally per-character/per-slot records — but the semantic meaning of the individual bytes (level/class/stat/item id) is not proven from this handler.",
+   "evidence": "fo 0x9791e-0x97946 computes offset (i*9+j)*8 + SAVEOBJ + 0xf4 and stores one body byte; only byte[0] of each 8-byte record is written here. No label source (string/format) ties the bytes to a named stat.",
+   "confidence": "LOW"
+  }
+ ],
+ "open_questions": [
+  "Where (if anywhere) does a full 219-byte save get transferred server->client? It is NOT in cat=4; likely cat=5 (warehouse/economy, op 0x3d/0x3e/0x3f/0x40/0x41/0x42 per packet_catalog) or reconstructed purely from the op-0x3e 20-byte seed. Needs cat5 handler 0x57394 decode to confirm.",
+  "Semantic meaning of the op-0x3e 20-byte seed: SAVEOBJ[2], SAVEOBJ[0x2e], and 18 bytes into the 8-byte-stride array at SAVEOBJ+0xf4 (2x9). Which are level/class/party/stats? Requires cross-ref to the save serializer field map (C30).",
+  "Where is the file-slot global *(G+0xa3f8) set from the '#: 복구' slot-selection UI, and is it ever assigned from payload[2]? If not, server must assume the client already has the intended slot selected.",
+  "op 0x3d payload[4] (M[0xc]) is a reserved/unread byte — is it a length or second status the server must still populate, or free? Handler ignores it.",
+  "Exact on-disk framing of ./Hero3GameSave_<idx>: 16B header (sl+0xcec fixed blob) + 219B serialized payload vs. C29's [16B MD5][MX-DES payload] — reconcile whether 0x199a1c (fo 0x95334) applies MD5/encryption after the two raw writes."
+ ],
+ "artifacts": [
+  "d:/tmp/client.bin (cat4 handler fo 0x56f3c-0x57252)",
+  "fo 0x15727c GameSave-write helper",
+  "fo 0x197874 20-byte body reader",
+  "fo 0x195e40 save-object reset",
+  "fo 0x1960bc serializer (0xdb=219B block @fo 0x961ce)",
+  "fo 0x1951b0 file writer ('%s_%d', idx=*(G+0xa3f8))",
+  "fo 0x196b90 slot-record ptr",
+  "sl+0x49c './Hero3SlotSave', sl+0x4a4 './Hero3GameSave', sl+0x4a0 '아이템 정보 요청중입니다.', sl+0xce8 '%s_%d'"
+ ]
+}

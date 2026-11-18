@@ -1,0 +1,14 @@
+05_14 (57568) post-send      V=0x04a8 -> str@0xa968c : 돈 요청중입니다.
+05_3f (575f8) post-send      V=0x04ac -> str@0xa96a0 : 캐시 아이템 정보 요청중입니다.
+05_3d#1 (57c1a)              V=0x04b4 -> str@0xa96e8 : 싱글 창고로 아이템을 내렸습니다. 업데이트 중입니다.
+05_3d#2 (57c1a)              V=0x04b8 -> str@0xa971c : 아이템이 삭제 되었습니다. 업데이트 중입니다.
+05_40 withdraw (57c1a)       V=0x04bc -> str@0xa974c : 싱글 창고로 돈을 내렸습니다.
+05_41 err type0xe            V=0x07d4 -> str@0xa9f0c : 해당 조합 재료는 올릴 수 없습니다.
+05_41 err type0xf            V=0x07d8 -> str@0xa9f30 : 조합 래시피 아이템은 올릴 수 없습니다.
+05_41 err type0x11           V=0x07dc -> str@0xa9f58 : 퀘스트 아이템은 올릴 수 없습니다.
+05_41 (63584) post-send      V=0x07e0 -> str@0xa9f7c : 아이템 올리기 중입니다.
+05_05 (636c2) post-send      V=0x07e4 -> str@0xa9f94 : 아이템 버리기 중입니다.
+05_05 err                    V=0x07e8 -> str@0xa9fac : 해당 아이템은 내릴 수 없습니다.
+05_04 (636c2) post-send      V=0x07ec -> str@0xa9fcc : 아이템 내리기 중입니다.
+05_04 err full               V=0x07f0 -> str@0xa9fe4 : 싱글 창고가 가득찼습니다.
+05_04 err irreversible       V=0x07f4 -> str@0xaa000 : 인벤토리로 내리면 다시 네트워크로 올릴 수 없습니다. 계속 하시겠습니까?

@@ -1,0 +1,106 @@
+{
+ "region": "Server text messages (cat 0x64 persistent box, cat 0x1f 2s toast) + error render states (renderTable indexed by NET+0x9c; states 1=cannot-connect, 2=connection-terminated)",
+ "summary": "## Response-body model for cat 0x64 / cat 0x1f + error render states\n\nAll addresses are FILE OFFSETS (guest = fo + 0x100000). The \"NET\" struct = `*(0x14ad10()) + 0xa3ac`. Key NET fields:\n- `NET+0xa0` = 256-byte EUC-KR message buffer (the text shown to the user).\n- `NET+0x9c` = u32 **dialog render-state** (indexes renderTable).\n- `NET+0x460` = u8 icon flag, `NET+0x461` = u8 \"message present/show\" flag.\n\n### renderTable (static @ fo 0xb32ec, pointer word @ sl+0x6a8=fo 0xb32e8, dispatched at fo 0x5aef4 by `NET[0x9c]`)\n| idx | fn fo | meaning | draws |\n|----|-------|---------|-------|\n| 0 | 0x7285c | idle | no-op (returns) |\n| 1 | 0x7286c | **CANNOT CONNECT** | fixed str 0xaa800; on give-up pops it as 2s toast |\n| 2 | 0x729d4 | **CONNECTION TERMINATED** | fixed str 0xaa830 + \"확인\" button (0xaa850) |\n| 3 | 0x72b18 | generic msg box | `NET+0xa0` |\n| 4 | 0x72cbc | cat64 op0 box | `NET+0xa0` |\n| 5 | 0x72d64 | cat64 op1 box | `NET+0xa0` |\n| 6 | 0x72e0c | cat64 op2 box | `NET+0xa0` |\n| 7 | 0x72eb4 | cat1f toast (2s auto-dismiss) | `NET+0xa0` |\n| 8-11 | 0x72fe8.. | other in-game UI | menus |\n\n### (1) Server text message carriers\n**cat 0x64** (handler fo 0x581a8) — PERSISTENT message box. Wire body is length-prefixed:\n`[u32 total_len][0x64][op u8][msglen u8][msglen EUC-KR bytes]`. Client does `memcpy(NET+0xa0, payload+3, msglen)` @0x58218, NUL-terminates, then op-switch sets state: op0→`NET[0x9c]=4`, op1→5, op2→6 (+`0x17e4c4(0)`); op≥3 = text copied but no state change. Sets `NET[0x461]=1`.\n\n**cat 0x1f** (inline handler fo 0x56bb0) — 2-SECOND TOAST. Wire body: `[u32 total_len][0x1f][op(IGNORED)][reserved(IGNORED)][EUC-KR C-string \\0]`. Handler calls `0x17e4c4(0)` then `showMessage(payload+3, 7, 1, 1)` @0x56bd4. showMessage (fn 0x175b98): `memset(NET+0xa0,0,0x100)`, `sprintf(NET+0xa0,\"%s\",payload+3)` @0x75c28, `NET[0x460]=1`, `NET[0x9c]=7`, `NET[0x461]=1`, and (timer arg=1) sets dismiss-timer `sl+0x9ac = now+2000ms`. renderTable[7] auto-calls `clearMessage(0)` when `now>=timer`.\n\nA private server can push any Korean status/error string to the user with either cat (0x1f for a transient toast, 0x64 for a box that stays up).\n\n### (2) Error render states — what triggers them\n- **state 1 \"서버와 접속할 수 없습니다...\" (cannot connect)** is set when the WIPI socket callback reports **status code -5** (connect failed/refused/reset). Net-event handlers fn 0x74268 & 0x74388: `-5 → NET[0x9c]=1` @0x74338 / `clearMessage(1)` @0x744d2. Status -3/-4 = silent progress, -16(0x10) = silent close.\n- **state 2 \"서버와 연결이 종료되었습니다.\" (connection terminated)** — **exhaustive full-binary scan of every write to NET+0x9c shows values only {0,1,3,4,5,6,7,9,10,11,12,13,14}; NOTHING ever writes 2.** render[2] is **vestigial/unreachable** in this client build.\n\n**Server guidance:** accept the TCP connection and keep it open (never RST/refuse) so the WIPI connect/read callback never returns -5 → the \"cannot connect\" screen (state 1) is avoided. The \"connection terminated\" screen (state 2) cannot be reached by any client code path, so it is not a concern. A mid-session server-side close surfaces as -5/-16 (→ \"cannot connect\" toast or silent), NOT the terminated screen.\n\nNote: these two text handlers read the body by DIRECT offset (M+0xa len, M+0xb string) — they do NOT use the message read-cursor helper (that cursor is for login/warehouse cats).",
+ "reply_formats": [
+  {
+   "cat_op": "cat=0x64, op=0/1/2 (persistent server message box)",
+   "layout": "payload[0]=0x64 (cat, u8); payload[1]=op (u8: 0->render state4, 1->state5, 2->state6+call 0x17e4c4, >=3->text copied but NO state change); payload[2]=msglen (u8, count of text bytes); payload[3..3+msglen-1]=EUC-KR text (NO trailing NUL needed). Frame prefixed by [u32 LE total_len incl 4B header]. Little-endian header, single-byte fields for op/len.",
+   "effect": "memcpy(NET+0xa0, payload+3, msglen) @fo0x58218; client NUL-terminates at NET+0xa0+msglen; sets NET+0x9c=4/5/6, NET+0x461=1. Rendered white by renderTable[4/5/6] (draw NET+0xa0). Persistent box (no auto-timer) - stays until dismissed by user input.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "cat=0x1f (transient 2-second toast / status notification)",
+   "layout": "payload[0]=0x1f (cat, u8); payload[1]=op -> IGNORED by handler; payload[2]=reserved -> IGNORED (never read); payload[3..]=NUL-terminated EUC-KR C-string (read via sprintf \"%s\"). String MUST start at payload[3]. Frame prefixed by [u32 LE total_len].",
+   "effect": "handler 0x56bb0 -> 0x17e4c4(0) then showMessage(payload+3,7,1,1) @fo0x56bd4. showMessage(0x175b98): memset(NET+0xa0,0,256); sprintf(NET+0xa0,\"%s\",payload+3) @fo0x75c28; NET+0x460=1; NET+0x9c=7; NET+0x40=0; NET+0x461=1; dismiss timer sl+0x9ac=now+2000ms. renderTable[7] (0x72eb4) draws NET+0xa0 then clearMessage(0) once now>=timer -> disappears after ~2s.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "error render state 1 (no server reply; driven by socket status -5)",
+   "layout": "No wire body. NET+0x9c(u32)=1 set by net-event handlers fn 0x74268/0x74388 when WIPI socket callback status == -5 (movs r3,#1; str [r2+0x9c] @fo0x74338; also clearMessage(1) @fo0x744d2).",
+   "effect": "renderTable[1]=fo 0x7286c draws fixed EUC-KR string @fo 0xaa800 = '서버와 접속할 수 없습니다. 잠시후 시도해주세요.' (Cannot connect to server). Server AVOIDS by accepting the connection (no RST/refuse) so status never becomes -5.",
+   "confidence": "HIGH"
+  },
+  {
+   "cat_op": "error render state 2 (unreachable / vestigial)",
+   "layout": "No wire body and NO writer: full-binary scan found no code writing 2 to NET+0x9c. Would require NET+0x9c(u32)=2.",
+   "effect": "renderTable[2]=fo 0x729d4 draws fixed str @fo 0xaa830 = '서버와 연결이 종료되었습니다.' (Connection terminated) + '@OK:}확인' button @fo 0xaa850. Dead code in this build - the server cannot accidentally trigger it.",
+   "confidence": "HIGH"
+  }
+ ],
+ "claims": [
+  {
+   "statement": "cat 0x64 handler (fo 0x581a8) copies a length-prefixed EUC-KR string to NET+0xa0: dest=NET+0xa0, src=payload[3] (M+0xb), len=payload[2] (M+0xa), then NUL-terminates.",
+   "evidence": "fo 0x58200 'adds r1,#0xa0' (dest NET+0xa0); fo 0x5820a 'adds r2,#0xb' (src M+0xb=payload[3]); fo 0x581e4 'ldrb r3=[M+0xa]' (len=payload[2]); fo 0x58218 'bl #0x19f624' (memcpy); fo 0x58234 'strb #0,[NET+0xa0+len]' NUL-term.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat 0x64 op sub-switch: op0->NET[0x9c]=4, op1->5, op2->6 (+0x17e4c4(0)), op>=3 -> text copied but no state change. NET[0x461]=1 in all handled cases.",
+   "evidence": "fo 0x5827e 'movs r3,#4; str [r2+0x9c]' (op0); fo 0x5829c '#5' (op1); fo 0x582c0 '#6' (op2) with fo 0x582b4 'movs r0,#0; bl 0x17e4c4'; branch logic fo 0x5824a cmp#1 / 0x58256 bgt / 0x58262 cmp#0; each case ends 'str #1,[NET+0x461]'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat 0x1f handler (fo 0x56bb0) ignores op (payload[1]) and payload[2]; the message is a NUL-terminated EUC-KR C-string starting at payload[3], rendered via showMessage as a 2-second toast (state 7).",
+   "evidence": "fo 0x56bca 'adds r3,#0xb' (payload[3]); fo 0x56bce..d2 'movs r1,#7; r2,#1; r3,#1'; fo 0x56bd4 'bl 0x175b98'. Format string sl+0x484 -> fo 0xa95f8 = '%s' (verbatim copy). Handler never reads M+0xa (payload[2]).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "showMessage (fn 0x175b98) writes NET+0xa0 (sprintf %s), NET+0x460=arg2, NET+0x9c=arg1(=mode), NET+0x461=arg3; when arg3==1 it arms auto-dismiss timer sl+0x9ac = now+2000ms; renderTable[7] auto-calls clearMessage(0) at expiry.",
+   "evidence": "fo 0x75bf6 memset(NET+0xa0,0,0x100); fo 0x75c28 'bl 0x1a42a4' sprintf w/ fmt sl+0x484='%s'; fo 0x75c3e 'strb [NET+0x460]'; fo 0x75c50 'str [NET+0x9c]'; fo 0x75c6e 'strb [NET+0x461]'; fo 0x75c76 'cmp arg3,#1' -> fo 0x75c94 literal 0x7d0(2000)+now stored to sl+0x9ac. render7 fo 0x72fc8 'movs r0,#0; bl 0x175cdc' on timer expiry.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "NET+0x9c is the dialog render-state index into the static renderTable at fo 0xb32ec (12 entries; pointer word sl+0x6a8 @ fo 0xb32e8 relocates to it). Dispatcher at fo 0x5aef4 reads NET[0x9c], <<2, indexes table, indirect-calls.",
+   "evidence": "fo 0x5aef4 'adds r3,#0x9c; ldr r3,[r3]; lsls r3,#2; adds r2,r3,r2; ldr r2,[r2]; bl 0x1a429c'. Static tbl[0..3] fns resolve to 0x7285c,0x7286c,0x729d4,0x72b18 (indices 0-3 exact). render[2] ptr found ONLY at fo 0xb32f4 (tbl idx2).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "renderTable[1]=fo 0x7286c shows 'cannot connect' (fo 0xaa800); renderTable[2]=fo 0x729d4 shows 'connection terminated' (fo 0xaa830) + OK button (fo 0xaa850).",
+   "evidence": "render1 loads sl+0x994->fo 0xaa800 at fo 0x7299c and showMessage(...,7,1,1) fo 0x7299c-0x729aa. render2 loads sl+0x998->fo 0xaa830 at fo 0x72a56 -> 0x15aacc(white), and sl+0x99c->fo 0xaa850 button -> 0x13ecfc at fo 0x72aee. Strings decoded EUC-KR: 0xaa800='서버와 접속할 수 없습니다. 잠시후 시도해주세요.', 0xaa830='서버와 연결이 종료되었습니다.', 0xaa850='@OK:}확인'.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 'cannot connect' error (state 1) is triggered by WIPI socket callback status code -5, NOT by a server response. Status -3/-4 = silent progress; -16 = silent close (clearMessage 0).",
+   "evidence": "net-event handlers fn 0x74268 & 0x74388: fo 0x7430c 'movs r1,#5; rsbs (=-5); cmp; bne' then fo 0x74338 'movs r3,#1; str [r2+0x9c]; bl 0x17e344'; second handler fo 0x744d0 'movs r0,#1; bl 0x175cdc(clearMessage 1)'. -3/-4 branch fo 0x742a8/0x742b6 sets only +0x98 flag; -16 branch fo 0x74508 -> clearMessage(0).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "No code path ever sets NET+0x9c=2, so renderTable[2] 'connection terminated' is unreachable/vestigial in this client build.",
+   "evidence": "Full-binary decode of every 'adds rN,#0x9c' writer plus both state helpers: direct writers produce only {0,4,5,6,12,1}; setState/clearMessage(0x75cdc) callers pass r0 in {0,1,3}; showMessage(0x175b98) 58 callers pass mode(r1) in {3,5,7,9,10,11,13,14}. Value 2 appears in none. str [+0x9c] is a word write and 0x9c>0x7c forbids str-imm, so all writes must use the scanned 'adds #0x9c' form.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "renderTable[0]=fo 0x7285c is a no-op (idle: no dialog). renderTable[4/5/6]=cat64 boxes and [3]=generic box all render the same NET+0xa0 buffer white via 0x15aacc, with an optional icon gated on NET+0x460.",
+   "evidence": "render0 fo 0x7285c: push/str r0/pop only (empty). render4 fo 0x72cbc: fo 0x72cf8 checks NET+0x460 for icon (0x10defc), fo 0x72d3c checks NET+0xa0!=0 then fo 0x72d58 '0x15aacc(NET+0xa0,0xff,0xff,0xff)'. Same pattern in render3/5/6/7.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "To reach the client, both text-message handlers require the standard response frame [u32 LE total_len incl 4B header][cat][op][body]; cat 0x64 needs total_len consistent with 7+msglen and cat 0x1f needs a NUL byte terminating the string at payload[3..].",
+   "evidence": "Dispatcher model (M=*node+8; M[8]=cat=payload[0]; M[9]=op; M[0xa]=payload[2]). cat64 uses payload[2] as its own length so it is self-describing; cat1f relies on the sprintf '%s' NUL scan (fmt fo 0xa95f8).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x17e4c4(flag) (called by cat64 op2 and cat1f) clears UI latch flags *(sl+0x814)=0 and *(sl+0xa44)=0 and, when flag==0, stops an active timed channel (sets a 64-bit field at *(sl+0x9d0) to -1, clears its +0x8/+0xc/+0x14). Cosmetic side-effect of presenting a message; not part of the wire format.",
+   "evidence": "fo 0x7e4d8 'strb #0,[*(sl+0x814)]'; fo 0x7e4e2 'strb #0,[*(sl+0xa44)]'; fo 0x7e4e4 'cmp r0,#0; bne skip'; fo 0x7e504-0x7e510 store -1 / 0 into *(sl+0x9d0) struct.",
+   "confidence": "MED"
+  },
+  {
+   "statement": "Supplementary strings confirm the message system also drives warehouse/economy/cash-shop feedback (relevant to the private-server warehouse feature).",
+   "evidence": "sl+0x9b4->fo 0xaa8ac='삭제하였습니다.'(deleted); sl+0x9b8->fo 0xaa8bc='돈 내리기 중입니다.'(withdrawing money); sl+0x9bc->fo 0xaa8d0='캐시템 구입중입니다.;(강제 종료시 아이템이 사라질 수 있습니다.)'(buying cash item). sl+0x9b4 is shown via showMessage(mode7) in net-handler B -5 branch fo 0x744ca.",
+   "confidence": "HIGH"
+  }
+ ],
+ "open_questions": [
+  "Exact dismissal/next-screen semantics that distinguish cat64 op0 vs op1 vs op2 (render 4/5/6 all draw NET+0xa0 identically; the op difference likely lives in the input/key handler that consumes NET+0x461, not decoded here).",
+  "Whether any non-code (initial/garbage) path could leave NET+0x9c=2 at boot; NET appears zero-initialized (state 0 idle), so practically no, but the struct initializer was not disassembled.",
+  "Precise role of the second net-event handler (fo 0x74388) vs first (fo 0x74268) - likely login-socket vs warehouse/economy-socket callbacks; both map status -5 to the same 'cannot connect' outcome."
+ ],
+ "artifacts": [
+  "d:/tmp/client.bin (analyzed, read-only)",
+  "cat 0x64 handler fo 0x581a8; cat 0x1f handler fo 0x56bb0",
+  "showMessage fn fo 0x175b98; clearMessage/setState fn fo 0x175cdc",
+  "renderTable static array fo 0xb32ec (12 entries, indexed by NET+0x9c); dispatcher fo 0x5aef4",
+  "render states: [0]0x7285c idle, [1]0x7286c cannot-connect, [2]0x729d4 conn-terminated, [3]0x72b18, [4]0x72cbc, [5]0x72d64, [6]0x72e0c, [7]0x72eb4 toast",
+  "net-event/error-state handlers fo 0x74268 and fo 0x74388 (status -5 -> state 1)",
+  "strings: fo 0xaa800 cannot-connect, fo 0xaa830 conn-terminated, fo 0xaa850 OK-button, fo 0xa95f8 '%s' fmt"
+ ]
+}

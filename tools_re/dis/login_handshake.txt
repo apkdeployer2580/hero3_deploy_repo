@@ -1,0 +1,24 @@
+056a08  push     {r4, r7, lr} 
+056a0a  mov      r7, sp 
+056a0c  sub      sp, #4 
+056a0e  subs     r4, r7, #4 
+056a10  bl       #0x14ad10 
+056a14  adds     r3, r0, #0 
+056a16  ldr      r2, [pc, #0x24]   ; lit@0x56a3c = 0x0000a3ac
+056a18  adds     r3, r3, r2 
+056a1a  str      r3, [r4] 
+056a1c  movs     r0, #3 
+056a1e  bl       #0x175cdc 
+056a22  movs     r0, #1 
+056a24  bl       #0x17e150 
+056a28  movs     r0, #1 
+056a2a  bl       #0x17e150 
+056a2e  movs     r0, #2 
+056a30  bl       #0x17e150 
+056a34  bl       #0x17e890 
+056a38  mov      sp, r7 
+056a3a  pop      {r4, r7, pc} 
+056a3c  adr      r3, #0x2b0 
+056a3e  movs     r0, r0 
+056a40  push     {r7, lr} 
+056a42  mov      r7, sl 

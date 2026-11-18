@@ -1,0 +1,77 @@
+07e9e8  mov      ip, r3 
+07e9ea  mov      r3, sl 
+07e9ec  push     {r3} 
+07e9ee  mov      r3, ip 
+07e9f0  ldr      r3, [pc, #0x18]   ; lit@0x7ea0c = 0x00034246
+07e9f2  mov      sl, r3 
+07e9f4  ldr      r3, [pc, #0x18]   ; lit@0x7ea10 = 0x00000a38
+07e9f6  add      sl, pc 
+07e9f8  add      r3, sl 
+07e9fa  ldr      r2, [r3] 
+07e9fc  movs     r3, #0 
+07e9fe  ldrsb    r3, [r2, r3] 
+07ea00  lsls     r3, r3, #2 
+07ea02  adds     r3, r3, r2 
+07ea04  ldr      r0, [r3, #4] 
+07ea06  pop      {r3} 
+07ea08  mov      sl, r3 
+07ea0a  bx       lr 
+07ea0c  rsbs     r6, r0, #0 
+07ea0e  movs     r3, r0 
+07ea10  lsrs     r0, r7, #8 
+07ea12  movs     r0, r0 
+07ea14  push     {r4, lr} 
+07ea16  mov      r4, sl 
+07ea18  push     {r4} 
+07ea1a  ldr      r3, [pc, #0x5c]   ; lit@0x7ea78 = 0x0003421c (reloc-> 0x35108 'ÌþÿÿÊþÿÿ')
+07ea1c  mov      sl, r3 
+07ea1e  ldr      r3, [pc, #0x5c]   ; lit@0x7ea7c = 0x00000a38
+07ea20  add      sl, pc 
+07ea22  add      r3, sl 
+07ea24  ldr      r4, [r3] 
+07ea26  movs     r3, #0 
+07ea28  ldrsb    r3, [r4, r3] 
+07ea2a  lsls     r3, r3, #2 
+07ea2c  lsls     r0, r0, #0x18 
+07ea2e  adds     r3, r3, r4 
+07ea30  lsrs     r1, r0, #0x18 
+07ea32  ldr      r0, [r3, #4] 
+07ea34  ldrb     r2, [r4] 
+07ea36  cmp      r0, #0 
+07ea38  beq      #0x17ea5c 
+07ea3a  cmp      r1, #0 
+07ea3c  bne      #0x17ea66 
+07ea3e  lsls     r3, r2, #0x18 
+07ea40  asrs     r3, r3, #0x16 
+07ea42  adds     r3, r3, r4 
+07ea44  movs     r2, #0 
+07ea46  str      r2, [r3, #4] 
+07ea48  movs     r1, #0 
+07ea4a  ldrsb    r1, [r4, r1] 
+07ea4c  adds     r2, r1, #1 
+07ea4e  adds     r3, r2, #0 
+07ea50  cmp      r2, #0 
+07ea52  blt      #0x17ea62 
+07ea54  asrs     r3, r3, #2 
+07ea56  lsls     r3, r3, #2 
+07ea58  subs     r3, r2, r3 
+07ea5a  strb     r3, [r4] 
+07ea5c  pop      {r3} 
+07ea5e  mov      sl, r3 
+07ea60  pop      {r4, pc} 
+07ea62  adds     r3, r1, #4 
+07ea64  b        #0x17ea54 
+07ea66  ldr      r3, [pc, #0x18]   ; lit@0x7ea80 = 0x00000018
+07ea68  add      r3, sl 
+07ea6a  ldr      r3, [r3] 
+07ea6c  ldr      r3, [r3] 
+07ea6e  ldr      r3, [r3, #0x58] 
+07ea70  bl       #0x1a42a0 
+07ea74  ldrb     r2, [r4] 
+07ea76  b        #0x17ea3e 
+07ea78  tst      r4, r3 
+07ea7a  movs     r3, r0 
+07ea7c  lsrs     r0, r7, #8 
+07ea7e  movs     r0, r0 
+07ea80  movs     r0, r3 
+07ea82  movs     r0, r0 

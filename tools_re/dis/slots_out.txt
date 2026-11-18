@@ -1,0 +1,32 @@
+57568/05_14 after
+    V=0x04a8 slot@0xb30e8 W=0x000a87a0  strA@0xa968c='돈 요청중입니다.'
+575f8/05_3f after
+    V=0x04ac slot@0xb30ec W=0x000a87b4  strA@0xa96a0='캐시 아이템 정보 요청중입니다.'
+57c1a/05_3d(1) status
+    V=0x04b4 slot@0xb30f4 W=0x000a87fc  strA@0xa96e8='싱글 창고로 아이템을 내렸습니다. 업데이트 중입니다.'
+57c1a/05_3d(2) status
+    V=0x04b8 slot@0xb30f8 W=0x000a8830  strA@0xa971c='아이템이 삭제 되었습니다. 업데이트 중입니다.'
+57c1a withdraw status
+    V=0x04bc slot@0xb30fc W=0x000a8860  strA@0xa974c='싱글 창고로 돈을 내렸습니다.'
+575f8/05_03 gridbase
+    V=0x0018 slot@0xb2c58 W=0x000c24a0  strA@0xc338c='oob'
+575f8/05_3d net-ptr
+    V=0x0484 slot@0xb30c4 W=0x000a870c  strA@0xa95f8='%s'  | derefB@0x8211='b';\x1bh\x04IZ\x18\x01K\x13\x80\x06\xe0''
+63584 val err 0xe/0x1d
+    V=0x07d4 slot@0xb3414 W=0x000a9020  strA@0xa9f0c='해당 조합 재료는 올릴 수 없습니다.'
+63584 val err 0xf
+    V=0x07d8 slot@0xb3418 W=0x000a9044  strA@0xa9f30='조합 래시피 아이템은 올릴 수 없습니다.'
+63584 val err 0x11
+    V=0x07dc slot@0xb341c W=0x000a906c  strA@0xa9f58='퀘스트 아이템은 올릴 수 없습니다.'
+63584/05_41 status
+    V=0x07e0 slot@0xb3420 W=0x000a9090  strA@0xa9f7c='아이템 올리기 중입니다.'
+636c2/05_05 status
+    V=0x07e4 slot@0xb3424 W=0x000a90a8  strA@0xa9f94='아이템 버리기 중입니다.'
+636c2 err e8
+    V=0x07e8 slot@0xb3428 W=0x000a90c0  strA@0xa9fac='해당 아이템은 내릴 수 없습니다.'
+636c2/05_04 status
+    V=0x07ec slot@0xb342c W=0x000a90e0  strA@0xa9fcc='아이템 내리기 중입니다.'
+636c2 err f0
+    V=0x07f0 slot@0xb3430 W=0x000a90f8  strA@0xa9fe4='싱글 창고가 가득찼습니다.'
+636c2 err f4
+    V=0x07f4 slot@0xb3434 W=0x000a9114  strA@0xaa000='b'\xc0\xce\xba\xa5\xc5\xe4\xb8\xae\xb7\xce \xb3\xbb\xb8\xae\xb8\xe9 \xb4\xd9\xbd\xc3 \xb3\xd7\xc6\xae\xbf\xf6\xc5\xa9\xb7\xce \xbf\xc3\xb8\xb1 \xbc\xf6 \xbe\xf8\xbd\xc0\xb4\xcf\xb4\xd9. \xb0\xe8\xbc\xd3 \xc7\xcf\xbd\xc3\xb0\xda\xbd''

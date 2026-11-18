@@ -1,0 +1,24 @@
+# 의상 15 — 하드코어 엔딩 보상 · 리츠 전용. 175차: 사용자 참고 그림 2 (넘긴 남색 장발 · 수염 · 검은 쓰리피스 정장 · 넥타이 · 일본도 · 은빛 권총).
+# 투구 시트가 얼굴까지 머리 전체를 그린다(171차 head = own) — 게임은 이 세트의 투구를 입은 동안 주인공 자신의 머리를 안 그린다.
+head = own
+# tools_re/costume_atelier/sets/hitman.py 가 프레임마다 그린다(재채색 없음).
+set            = 검은 정장의 킬러
+acquire        = clear.hard
+hero           = ritz
+helmet         = 킬러의 머리
+helmet.desc    = 뒤로 넘긴 남색 장발과 수염
+armor          = 킬러의 정장
+armor.desc     = 넥타이를 맨 검은 쓰리피스
+gloves         = 킬러의 소매
+gloves.desc    = 흰 커프스를 단 정장 소매
+shoes          = 킬러의 하의
+shoes.desc     = 검은 정장 바지와 구두
+weapon         = 킬러의 무기
+weapon.desc    = 손에 익은 일격필살의 무기
+weapon.spear   = 킬러의 창
+weapon.sword   = 킬러의 일본도
+weapon.knife   = 킬러의 단검
+weapon.gun     = 킬러의 은빛 권총
+weapon.rifle   = 킬러의 산탄총
+shield         = 킬러의 서류가방
+shield.desc    = 방탄 처리한 검은 서류가방

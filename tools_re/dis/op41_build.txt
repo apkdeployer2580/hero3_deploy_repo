@@ -1,0 +1,80 @@
+0635a0  ldrb     r3, [r3, #9] 
+0635a2  lsls     r3, r3, #0x18 
+0635a4  asrs     r3, r3, #0x18 
+0635a6  cmp      r3, #0x1d 
+0635a8  ble      #0x163650 
+0635aa  ldr      r3, [pc, #0x98]   ; lit@0x63644 = 0x000007d4
+0635ac  add      r3, sl 
+0635ae  ldr      r3, [r3] 
+0635b0  adds     r0, r3, #0 
+0635b2  movs     r1, #7 
+0635b4  movs     r2, #1 
+0635b6  movs     r3, #1 
+0635b8  bl       #0x175b98 
+0635bc  bl       #0x14ad10 
+0635c0  adds     r3, r0, #0 
+0635c2  ldr      r1, [pc, #0x78]   ; lit@0x6363c = 0x00009c86
+0635c4  adds     r2, r3, r1 
+0635c6  movs     r3, #0 
+0635c8  strb     r3, [r2] 
+0635ca  bl       #0x164018 
+0635ce  adds     r3, r7, #0 
+0635d0  subs     r3, #0x2c 
+0635d2  ldrb     r3, [r3, #8] 
+0635d4  lsls     r3, r3, #0x18 
+0635d6  asrs     r3, r3, #0x18 
+0635d8  cmp      r3, #0xf 
+0635da  bne      #0x163600 
+0635dc  ldr      r3, [pc, #0x68]   ; lit@0x63648 = 0x000007d8
+0635de  add      r3, sl 
+0635e0  ldr      r3, [r3] 
+0635e2  adds     r0, r3, #0 
+0635e4  movs     r1, #7 
+0635e6  movs     r2, #1 
+0635e8  movs     r3, #1 
+0635ea  bl       #0x175b98 
+0635ee  bl       #0x14ad10 
+0635f2  adds     r3, r0, #0 
+0635f4  ldr      r1, [pc, #0x44]   ; lit@0x6363c = 0x00009c86
+0635f6  adds     r2, r3, r1 
+0635f8  movs     r3, #0 
+0635fa  strb     r3, [r2] 
+0635fc  bl       #0x164018 
+063600  adds     r3, r7, #0 
+063602  subs     r3, #0x2c 
+063604  ldrb     r3, [r3, #8] 
+063606  lsls     r3, r3, #0x18 
+063608  asrs     r3, r3, #0x18 
+06360a  cmp      r3, #0x11 
+06360c  bne      #0x163650 
+06360e  ldr      r3, [pc, #0x3c]   ; lit@0x6364c = 0x000007dc
+063610  add      r3, sl 
+063612  ldr      r3, [r3] 
+063614  adds     r0, r3, #0 
+063616  movs     r1, #7 
+063618  movs     r2, #1 
+06361a  movs     r3, #1 
+06361c  bl       #0x175b98 
+063620  bl       #0x14ad10 
+063624  adds     r3, r0, #0 
+063626  ldr      r1, [pc, #0x14]   ; lit@0x6363c = 0x00009c86
+063628  adds     r2, r3, r1 
+06362a  movs     r3, #0 
+06362c  strb     r3, [r2] 
+06362e  bl       #0x164018 
+063632  movs     r0, r0 
+063634  ldr      r6, [sp, #0xa0] 
+063636  movs     r0, r0 
+063638  lsls     r4, r1, #0x1f 
+06363a  movs     r0, r0 
+06363c  ldr      r4, [sp, #0x218] 
+06363e  movs     r0, r0 
+063640  lsls     r0, r2, #0x1f 
+063642  movs     r0, r0 
+063644  lsls     r4, r2, #0x1f 
+063646  movs     r0, r0 
+063648  lsls     r0, r3, #0x1f 
+06364a  movs     r0, r0 
+06364c  lsls     r4, r3, #0x1f 
+06364e  movs     r0, r0 
+063650  movs     r0, #5 

@@ -1,0 +1,24 @@
+05afc4  lsls     r4, r5, #0x1c 
+05afc6  movs     r0, r0 
+05afc8  push     {r7, lr} 
+05afca  mov      r7, sl 
+05afcc  push     {r7} 
+05afce  mov      r7, sp 
+05afd0  sub      sp, #8 
+05afd2  ldr      r3, [pc, #0x78]   ; lit@0x5b04c = 0x00057c66
+05afd4  mov      sl, r3 
+05afd6  add      sl, pc 
+05afd8  subs     r3, r7, #4 
+05afda  str      r0, [r3] 
+05afdc  adds     r3, r7, #0 
+05afde  subs     r3, #8 
+05afe0  str      r1, [r3] 
+05afe2  bl       #0x17df70 
+05afe6  ldr      r3, [pc, #0x68]   ; lit@0x5b050 = 0x000006e4
+05afe8  add      r3, sl 
+05afea  ldr      r3, [r3] 
+05afec  adds     r2, r3, #0 
+05afee  subs     r3, r7, #4 
+05aff0  ldr      r3, [r3] 
+05aff2  ldr      r1, [pc, #0x60]   ; lit@0x5b054 = 0x0000a448
+05aff4  adds     r3, r3, r1 

@@ -1,0 +1,20 @@
+064990  subs     r3, r7, #4 
+064992  str      r0, [r3] 
+064994  ldr      r3, [pc, #0x28]   ; lit@0x649c0 = 0x00000814
+064996  add      r3, sl 
+064998  ldr      r3, [r3] 
+06499a  ldrb     r3, [r3] 
+06499c  cmp      r3, #0 
+06499e  beq      #0x1649a4 
+0649a0  bl       #0x17e63c 
+0649a4  bl       #0x156a40 
+0649a8  movs     r0, #0 
+0649aa  bl       #0x17eb60 
+0649ae  bl       #0x17dfb8 
+0649b2  mov      sp, r7 
+0649b4  pop      {r3} 
+0649b6  mov      sl, r3 
+0649b8  pop      {r7, pc} 
+0649ba  movs     r0, r0 
+0649bc  b        #0x164f1c 
+0649be  movs     r4, r0 

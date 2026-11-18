@@ -1,0 +1,81 @@
+{
+ "region": "0x15b10c (fo 0x5b10c) — reached from cat=1/op=0x3e login-final handler (fo 0x56e6c), inside cat=1 login dispatcher (fo 0x56bf8)",
+ "summary": "## VERDICT: 0x15b10c is a paged EUC-KR TEXT-BOX builder, NOT a socket/connection descriptor. The op=0x3e reply body carries DISPLAY TEXT (a login-completion notice), not a host/IP/port/channel.\n\nThe task premise (\"secondary game/billing socket descriptor\") is **REFUTED by the code**. Every callee of 0x15b10c is enumerated and none does networking. The 0x14-byte object at NET+0x1a0 is a **wrapped-text display object**, and cat=1/op=0x3e is a **server->client \"show notice text\" message**.\n\n### What 0x15b10c actually does (HIGH)\nSignature (from caller 0x56ef2): `TextBox_BuildPaged(r0=obj, r1=node, r2=0x0c, r3=-1, stack0=0x99, stack1=9)`.\n1. `P = *node + r2 + 8 = M + 0x0c = &payload[4] = &body[2]` (M=*node+8; M[8]=cat). This is the string source. (fo 0x5b150-0x5b158)\n2. `r3 == -1` -> call `0x15b448(P, 1000)` = bounded **strlen** (cap 0x3e8). So the string is NUL-terminated; -1 arg = \"auto length\". (fo 0x5b23c-0x5b24e, 0x15b448 body)\n3. Call `0x13f504(P, 0x2710, 0x99, 1)` = EUC-KR **word-wrap line counter**: inner `0x13f554` reads bytes, tests high bit 0x80 (double-byte Hangul -> width+=0xb, advance 2), and delimiters `;`(0x3b) space(0x20) `.`(0x2e) `,`(0x2c), accumulating glyph pixel width against threshold r7=**0x99=153px**; wraps when exceeded. Returns line count. (fo 0x3f504, 0x3f554-0x3f5e2)\n4. `pages = 0x19f874(lines-1, 9) + 1`; `0x19f874` is **__divsi3** (abs+shift/subtract divide) => `(lines-1)/9 + 1`. So **9 = lines per page/screen**. (fo 0x9f874-0x9f8be)\n5. Alloc per-page pointer array via `G->vtable[0x54](pages*4+4)` where `G=*(sl+0x18)` mem-manager singleton and `0x1a429c`=`bx r2` veneer. (fo 0x5b1e8-0x5b1fe)\n6. `0x19f624` (ARM memcpy veneer `bx pc`) copies the notice text into the object's internal buffer. (fo 0x5b2f0)\n7. Returns obj (`*(r7-4)`). Caller stores it at NET+0x1a0, then `0x175cdc(0)` resets a 256-byte input/scroll buffer at NET+0xa0 and NET+0x9c=0, then sets login state `NET+0x38 = 0x0d`. (fo 0x56ef6-0x56f06, 0x75cdc)\n\n### Constants decoded (HIGH)\n- `0x2710` (10000) = **max string-scan length sentinel** passed to the wrap counter — NOT a default port, NOT a timeout. Effective text cap is 1000 (0x15b448).\n- `0x99` (153) = **wrap width in pixels** (display constant, client-side).\n- `9` = **lines per page** (stored at obj+0xc via arg6). \n- `-1` = \"auto strlen\".\n- `0xc` = byte offset into message M where the string begins (= body[2]).\n\n### Login state machine context (from cat=1 dispatcher 0x56bf8)\ncat=1 ops: op=1 (RX -> replies cat=1/op=0x3d + 16-byte ASCII int-string), op=0x3d (RX -> if state==9 replies cat=4/op=0x3e + NET[0x4c] byte), **op=0x3e (RX -> builds notice text box, NO reply, state NET+0x38 <- 0x0d)**, op=6 (no-op). No socket handshake (\"01 01 02\") anywhere in this path; the 0x01/0x3d bytes are put_u8 TX replies (0x17e150) in the op==1 case, unrelated to a connection.\n\n### For OUR server\nThere is no secondary socket to redirect here. To drive robust login completion, send a cat=1/op=0x3e frame whose body[2..] is a short NUL-terminated EUC-KR notice (empty = just 0x00 works). It builds the notice box and advances the client to state 0x0d. body[0]/body[1] (payload[2..3]) are NOT read by this handler (client auto-strlens) — send 00 00.",
+ "reply_formats": [
+  {
+   "cat_op": "cat=0x01 / op=0x3e (server->client, login-completion NOTICE text)",
+   "layout": "Frame: [u32 LE total_len incl 4B hdr] [u8 cat=0x01 @payload0/M8] [u8 op=0x3e @payload1/M9] [u8 body0 @payload2/M0xa = NOT read here, send 0x00] [u8 body1 @payload3/M0xb = NOT read here, send 0x00] [EUC-KR text bytes @payload4/M0xc.. = the notice string] [u8 0x00 NUL terminator, REQUIRED]. Text max ~1000 bytes (0x15b448 strlen cap). No integers/ports/host in body — it is plain display text.",
+   "effect": "Client frees any prior notice box at NET+0x1a0, allocs a fresh 0x14B text-box object, word-wraps the text to 153px width, paginates at 9 lines/page (alloc page-pointer array), memcpy's the text in, resets the 256B input/scroll buffer (0x175cdc), and sets login state NET+0x38=0x0d. NO reply frame is sent by the client.",
+   "confidence": "HIGH"
+  }
+ ],
+ "claims": [
+  {
+   "statement": "0x15b10c is a paged EUC-KR text-box builder, not a socket/connection descriptor. Its string source is M+0xc (=payload[4]=body[2]).",
+   "evidence": "fo 0x5b150-0x5b158: r1=*node=node[0]=M-8; r3=(M-8)+0xc; r3+=8 => P=M+0xc stored at *(r7-0x18). This P is the sole data pointer passed to the wrap counter (0x13f504), the strlen (0x15b448), and the memcpy (0x19f624). All three consume it as a byte string.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x13f504 (the function called with 0x2710) is an EUC-KR word-wrap line counter, not a network connect.",
+   "evidence": "fo 0x3f554 inner loop: `ldrb r3,[str,r5]; ands #0x80` (double-byte Hangul lead-byte test) -> width r6+=0xb, r5+=2; single-byte cmps against 0x3b(';') 0x20(' ') 0x2e('.') 0x2c(',') adjusting width (space +5, punct -3); wraps when accumulated width r6 > r7(=0x99). Returns line count in r5 (0x3f534). No socket/IP-parse ops.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x2710 (10000) is a string-scan length sentinel, NOT a port or timeout.",
+   "evidence": "fo 0x5b176 loads 0x2710 and passes it as r1 to 0x13f504, where (fo 0x3f568-0x3f570) it becomes r8, the loop bound `cmp r5,r8; bge exit` over the string index. Reused identically at fo 0x5b33c. Effective text length is further capped at 1000 by 0x15b448.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x19f874 is __divsi3 (signed divide); the descriptor computes page count = (lines-1)/9 + 1, so 9 = lines-per-page and 0x99=153 = wrap width in pixels.",
+   "evidence": "fo 0x9f874-0x9f87e: asrs #0x1f/eors/subs abs sequence on r0 and r1, then classic shift-subtract division loop (0x9f894-0x9f8b8). Caller fo 0x5b188 does ret-1 then divides by arg6=9 (fo 0x5b18c ldr r1,[r7,#0x20]=9), then +1 (0x5b194). obj+0xc <- 9 at fo 0x5b168-0x5b16a.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "The 0x14-byte object alloc and the internal array alloc are virtual method calls G->vtable[0x54](size), where G is the WIPI mem-manager singleton at *(sl+0x18); 0x1a42a0/0x1a429c are bx r3/bx r2 veneers.",
+   "evidence": "fo 0xa42a0='bx r3', 0xa429c='bx r2' (register-branch trampoline table). Caller fo 0x56eae-0x56eba: r3=*(*(*(sl+0x18)))+0x54 then bl 0x1a42a0 with r0=0x14. Inside 0x15b10c fo 0x5b1e8-0x5b1fe: r2=vtable[0x54], size=(pages<<2)+4, bl 0x1a429c.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "arg r3=-1 means auto-strlen; 0x15b448 is a bounded strlen capped at 1000, confirming the notice text is NUL-terminated.",
+   "evidence": "fo 0x5b23c `cmp r3,#0; bgt` skips when len>0; since r3=-1 it falls through to bl 0x15b448 (fo 0x5b24e) with r1=0xfa<<2=1000. 0x15b448 body (fo 0x5b462-0x5b4b8) increments a counter until str[counter]==0 (return counter) or counter>=1000 (return 1000).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "cat=1/op=0x3e handler (fo 0x56e6c) sends NO reply; it builds the notice box at NET+0x1a0, resets the input buffer via 0x175cdc, and sets login state NET+0x38=0x0d.",
+   "evidence": "fo 0x56e6c-0x56f06: frees prior NET+0x1a0 (0x15b390) if nonzero, alloc 0x14, bl 0x15b10c, str result to NET+0x1a0, bl 0x175cdc(0), `movs r3,#0xd; str r3,[NET,#0x38]`. No put_u8(0x17e150)/flush(0x17e890) calls in this branch (unlike op==1/op==0x3d branches which do TX).",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "0x175cdc resets a 256-byte input/scroll state buffer at NET+0xa0 (not networking).",
+   "evidence": "fo 0x75d02-0x75d36: NET=*(0x14ad10+0xa3ac); memset(NET+0xa0, 0, 0x80<<1=0x100) via 0x19fb78; *(NET+0x9c)=arg0(=0); *(NET+0x461)=0.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "There is no secondary socket and no re-run of the 01 01 02 handshake in this region.",
+   "evidence": "All callees of 0x15b10c enumerated: 0x13f504(text wrap), 0x19f874(divide), 0x1a429c/0x1a42a0(alloc veneer), 0x19f624(memcpy), 0x15b448(strlen), 0x15b390(free). None invoke a WIPI net primitive. The 0x01/0x3d/0x3e literals seen in sibling ops are put_u8 TX-reply payloads (0x17e150), not connection bytes.",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "body[0] and body[1] (payload[2..3] = M[0xa..0xb]) are not consumed by the op=0x3e handler; the text starts at body[2].",
+   "evidence": "0x15b10c reads only from M+0xc onward (fo 0x5b150-0x5b158); the op=0x3e branch (0x56e6c) contains no other M[0xa]/M[0xb] read. Cross-check: the recovery handler at fo 0x56fd0 reads M[0xa]=payload[2]=body[0] explicitly, confirming M[0xa]=body[0] and thus M[0xc]=body[2].",
+   "confidence": "HIGH"
+  },
+  {
+   "statement": "Semantic purpose of the op=0x3e text is a login-completion notice (likely billing/MOTD/welcome), inferred from context.",
+   "evidence": "It is built at the terminal login op after the op==1->0x3d and op==0x3d->cat4/0x3e exchanges, stored in a display object, and the client enters UI state 0x0d with a reset scroll buffer — matching a scrollable notice viewer. The exact label (billing vs MOTD) is not provable from this function alone; no in-binary string literal is attached to this handler.",
+   "confidence": "MED"
+  }
+ ],
+ "open_questions": [
+  "What are body[0]/body[1] (payload[2..3]) semantically? They are not read by op=0x3e; candidates: a u16 text-length prefix (redundant since client auto-strlens) or reserved flags. Needs a real captured op=0x3e frame to confirm.",
+  "Exact notice category (billing vs welcome vs MOTD): no string literal is bound to this handler; would need a live capture or the server-side protocol spec.",
+  "Does any OTHER cat/op open the real secondary game/billing SOCKET the task expected? This region does not; a caller/xref scan of the WIPI net primitive (MC_netConnect) would locate the true socket path if one exists."
+ ],
+ "artifacts": [
+  "d:/tmp/client.bin",
+  "C:/Users/<user>/AppData/Local/Temp/claude/d--testrepo/cd03ae6f-b553-4acb-8f12-0008a7b92a02/scratchpad/f_5b10c.txt",
+  "C:/Users/<user>/AppData/Local/Temp/claude/d--testrepo/cd03ae6f-b553-4acb-8f12-0008a7b92a02/scratchpad/f_56e6c.txt",
+  "C:/Users/<user>/AppData/Local/Temp/claude/d--testrepo/cd03ae6f-b553-4acb-8f12-0008a7b92a02/scratchpad/f_3f504.txt",
+  "C:/Users/<user>/AppData/Local/Temp/claude/d--testrepo/cd03ae6f-b553-4acb-8f12-0008a7b92a02/scratchpad/f_56bf8.txt"
+ ]
+}

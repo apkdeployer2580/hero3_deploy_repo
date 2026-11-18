@@ -1,0 +1,32 @@
+05a6c0  add      r3, sl 
+05a6c2  ldr      r3, [r3] 
+05a6c4  adds     r2, r3, #0 
+05a6c6  ldr      r3, [pc, #0x2a0]   ; lit@0x5a968 = 0x000006b0
+05a6c8  add      r3, sl 
+05a6ca  ldr      r3, [r3] 
+05a6cc  str      r3, [r2, #4] 
+05a6ce  ldr      r3, [pc, #0x294]   ; lit@0x5a964 = 0x000006a8
+05a6d0  add      r3, sl 
+05a6d2  ldr      r3, [r3] 
+05a6d4  adds     r2, r3, #0 
+05a6d6  ldr      r3, [pc, #0x294]   ; lit@0x5a96c = 0x000006b4
+05a6d8  add      r3, sl 
+05a6da  ldr      r3, [r3] 
+05a6dc  str      r3, [r2, #8] 
+05a6de  ldr      r3, [pc, #0x284]   ; lit@0x5a964 = 0x000006a8
+05a6e0  add      r3, sl 
+05a6e2  ldr      r3, [r3] 
+05a6e4  adds     r2, r3, #0 
+05a6e6  ldr      r3, [pc, #0x288]   ; lit@0x5a970 = 0x000006b8
+05a6e8  add      r3, sl 
+05a6ea  ldr      r3, [r3] 
+05a6ec  str      r3, [r2, #0xc] 
+05a6ee  ldr      r3, [pc, #0x274]   ; lit@0x5a964 = 0x000006a8
+05a6f0  add      r3, sl 
+05a6f2  ldr      r3, [r3] 
+05a6f4  adds     r2, r3, #0 
+05a6f6  ldr      r3, [pc, #0x27c]   ; lit@0x5a974 = 0x000006bc
+05a6f8  add      r3, sl 
+05a6fa  ldr      r3, [r3] 
+05a6fc  str      r3, [r2, #0x10] 
+05a6fe  ldr      r3, [pc, #0x264]   ; lit@0x5a964 = 0x000006a8

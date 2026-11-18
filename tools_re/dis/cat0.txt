@@ -1,0 +1,77 @@
+0582e0  push     {r7, lr} 
+0582e2  mov      r7, sp 
+0582e4  sub      sp, #8 
+0582e6  subs     r3, r7, #4 
+0582e8  str      r0, [r3] 
+0582ea  adds     r3, r7, #0 
+0582ec  subs     r3, #8 
+0582ee  str      r1, [r3] 
+0582f0  mov      sp, r7 
+0582f2  pop      {r7, pc} 
+0582f4  push     {r4, r5, r6, r7, lr} 
+0582f6  mov      r7, sp 
+0582f8  sub      sp, #0x28 
+0582fa  subs     r4, r7, #4 
+0582fc  str      r0, [r4] 
+0582fe  adds     r0, r7, #0 
+058300  subs     r0, #8 
+058302  str      r1, [r0] 
+058304  adds     r1, r7, #0 
+058306  subs     r1, #0xc 
+058308  str      r2, [r1] 
+05830a  adds     r2, r7, #0 
+05830c  subs     r2, #0x10 
+05830e  str      r3, [r2] 
+058310  bl       #0x10d53c 
+058314  adds     r2, r0, #0 
+058316  adds     r3, r7, #0 
+058318  subs     r3, #0x14 
+05831a  str      r2, [r3] 
+05831c  adds     r4, r7, #0 
+05831e  subs     r4, #0x18 
+058320  adds     r3, r7, #0 
+058322  subs     r3, #0xc 
+058324  ldr      r3, [r3] 
+058326  subs     r3, #0xc 
+058328  adds     r2, r7, #0 
+05832a  subs     r2, #0x10 
+05832c  adds     r0, r3, #0 
+05832e  ldr      r1, [r2] 
+058330  bl       #0x19f874 
+058334  adds     r3, r0, #0 
+058336  str      r3, [r4] 
+058338  adds     r3, r7, #0 
+05833a  subs     r3, #0x14 
+05833c  ldr      r3, [r3] 
+05833e  ldr      r2, [r3] 
+058340  subs     r3, r7, #4 
+058342  ldr      r3, [r3] 
+058344  adds     r1, r3, #2 
+058346  adds     r3, r7, #0 
+058348  subs     r3, #8 
+05834a  ldr      r4, [r3] 
+05834c  adds     r3, r7, #0 
+05834e  subs     r3, #0xc 
+058350  ldr      r3, [r3] 
+058352  subs     r3, #2 
+058354  str      r3, [sp] 
+058356  movs     r3, #0xce 
+058358  str      r3, [sp, #4] 
+05835a  movs     r3, #0xcb 
+05835c  str      r3, [sp, #8] 
+05835e  movs     r3, #0xc4 
+058360  str      r3, [sp, #0xc] 
+058362  adds     r0, r2, #0 
+058364  adds     r2, r4, #0 
+058366  movs     r3, #7 
+058368  bl       #0x10dea0 
+05836c  adds     r3, r7, #0 
+05836e  subs     r3, #0x14 
+058370  ldr      r3, [r3] 
+058372  ldr      r2, [r3] 
+058374  subs     r3, r7, #4 
+058376  ldr      r3, [r3] 
+058378  adds     r1, r3, #5 
+05837a  adds     r3, r7, #0 
+05837c  subs     r3, #8 
+05837e  ldr      r3, [r3] 
